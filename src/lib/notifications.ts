@@ -1,4 +1,5 @@
-import { connect, type TLSSocket } from "node:tls";
+import { connect as tlsConnect, type TLSSocket } from "node:tls";
+import { connect as netConnect, type Socket } from "node:net";
 
 const DEFAULT_ADMIN_EMAIL = "depotpharmaima@gmail.com";
 
@@ -7,11 +8,13 @@ type Notification = {
   text: string;
 };
 
+type SmtpSocket = Socket | TLSSocket;
+
 function encodeSubject(subject: string) {
   return `=?UTF-8?B?${Buffer.from(subject, "utf8").toString("base64")}?=`;
 }
 
-function readSmtpReply(socket: TLSSocket): Promise<string> {
+function readSmtpReply(socket: SmtpSocket): Promise<string> {
   return new Promise((resolve, reject) => {
     let buffer = "";
 
@@ -29,7 +32,6 @@ function readSmtpReply(socket: TLSSocket): Promise<string> {
       buffer += chunk.toString();
       const lines = buffer.split(/\r?\n/);
       for (const line of lines) {
-        // Final SMTP reply line: "250 OK" (space after code). Continuations use "250-..."
         if (/^\d{3} /.test(line)) {
           cleanup();
           resolve(buffer);
@@ -43,12 +45,36 @@ function readSmtpReply(socket: TLSSocket): Promise<string> {
   });
 }
 
-async function expectCode(socket: TLSSocket, code: number) {
+async function expectCode(socket: SmtpSocket, code: number) {
   const response = await readSmtpReply(socket);
   if (!response.includes(`${code} `) && !response.startsWith(String(code))) {
     throw new Error(`SMTP expected ${code}, got: ${response.trim()}`);
   }
   return response;
+}
+
+function connectPlain(host: string, port: number): Promise<Socket> {
+  return new Promise((resolve, reject) => {
+    const socket = netConnect({ host, port }, () => resolve(socket));
+    socket.setTimeout(20000, () => {
+      socket.destroy(new Error(`SMTP connection timed out on ${host}:${port}`));
+    });
+    socket.on("error", reject);
+  });
+}
+
+function upgradeToTls(socket: Socket): Promise<TLSSocket> {
+  return new Promise((resolve, reject) => {
+    const tlsSocket = tlsConnect(
+      {
+        socket,
+        host: "smtp.gmail.com",
+        servername: "smtp.gmail.com",
+      },
+      () => resolve(tlsSocket)
+    );
+    tlsSocket.on("error", reject);
+  });
 }
 
 async function sendViaGmailSmtp({
@@ -66,21 +92,20 @@ async function sendViaGmailSmtp({
   subject: string;
   text: string;
 }) {
-  const socket = await new Promise<TLSSocket>((resolve, reject) => {
-    const s = connect(
-      {
-        host: "smtp.gmail.com",
-        port: 465,
-        servername: "smtp.gmail.com",
-      },
-      () => resolve(s)
-    );
-    s.setEncoding("utf8");
-    s.on("error", reject);
-  });
+  // Prefer STARTTLS on 587; many hosts block implicit TLS on 465.
+  let socket: SmtpSocket = await connectPlain("smtp.gmail.com", 587);
+  socket.setEncoding("utf8");
 
   try {
     await expectCode(socket, 220);
+    socket.write("EHLO kasuwa.local\r\n");
+    await expectCode(socket, 250);
+
+    socket.write("STARTTLS\r\n");
+    await expectCode(socket, 220);
+    socket = await upgradeToTls(socket as Socket);
+    socket.setEncoding("utf8");
+
     socket.write("EHLO kasuwa.local\r\n");
     await expectCode(socket, 250);
 
