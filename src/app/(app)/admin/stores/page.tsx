@@ -49,6 +49,27 @@ export default function AdminStoresPage() {
     load();
   }
 
+  async function removeStore(store: Store) {
+    if (
+      !confirm(
+        `Delete ${store.name}? It will disappear from the app, but its past sales will be kept for records.`
+      )
+    ) {
+      return;
+    }
+    setError("");
+    setMessage("");
+    const res = await fetch(`/api/stores/${store.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to delete store");
+      return;
+    }
+    setMessage("Store deleted");
+    await load();
+    window.location.reload();
+  }
+
   return (
     <div>
       <h1 className="page-title">Stores</h1>
@@ -81,6 +102,7 @@ export default function AdminStoresPage() {
               <tr>
                 <th>Name</th>
                 <th>Address</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -88,11 +110,20 @@ export default function AdminStoresPage() {
                 <tr key={store.id}>
                   <td>{store.name}</td>
                   <td>{store.address || "—"}</td>
+                  <td>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => removeStore(store)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
               {stores.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="empty">
+                  <td colSpan={3} className="empty">
                     No stores yet
                   </td>
                 </tr>

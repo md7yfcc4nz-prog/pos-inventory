@@ -20,14 +20,15 @@ model User {
 }
 
 model Store {
-  id        String       @id @default(cuid())
-  name      String
-  address   String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  users     UserStore[]
-  stock     StoreStock[]
-  sales     Sale[]
+  id         String       @id @default(cuid())
+  name       String
+  address    String?
+  archivedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  users      UserStore[]
+  stock      StoreStock[]
+  sales      Sale[]
 }
 
 model UserStore {
@@ -50,6 +51,7 @@ model Product {
   lowStockThreshold Int        @default(10)
   expiryDate        DateTime?
   imagePath         String?
+  archivedAt        DateTime?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   stock             StoreStock[]
@@ -68,16 +70,20 @@ model StoreStock {
 }
 
 model Sale {
-  id            String     @id @default(cuid())
-  storeId       String
-  cashierId     String
-  paymentMethod String     @default("CASH")
-  subtotal      Float
-  total         Float
-  createdAt     DateTime   @default(now())
-  store         Store      @relation(fields: [storeId], references: [id])
-  cashier       User       @relation(fields: [cashierId], references: [id])
-  items         SaleItem[]
+  id             String     @id @default(cuid())
+  storeId        String
+  cashierId      String
+  paymentMethod  String     @default("CASH")
+  subtotal       Float
+  total          Float
+  status         String     @default("COMPLETED")
+  returnedAt     DateTime?
+  returnedByName String?
+  returnReason   String?
+  createdAt      DateTime   @default(now())
+  store          Store      @relation(fields: [storeId], references: [id])
+  cashier        User       @relation(fields: [cashierId], references: [id])
+  items          SaleItem[]
 }
 
 model SaleItem {

@@ -94,10 +94,13 @@ export class AuthError extends Error {
 
 export async function getAccessibleStores(user: SessionUser) {
   if (user.role === Role.ADMIN) {
-    return prisma.store.findMany({ orderBy: { name: "asc" } });
+    return prisma.store.findMany({
+      where: { archivedAt: null },
+      orderBy: { name: "asc" },
+    });
   }
   const links = await prisma.userStore.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, store: { archivedAt: null } },
     include: { store: true },
     orderBy: { store: { name: "asc" } },
   });

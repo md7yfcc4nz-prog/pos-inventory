@@ -37,8 +37,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
     }
     await assertStoreAccess(user, storeId);
 
-    const product = await prisma.product.findUnique({
-      where: { id },
+    const product = await prisma.product.findFirst({
+      where: { id, archivedAt: null },
       include: { stock: { where: { storeId } } },
     });
 
@@ -81,7 +81,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
     await assertStoreAccess(user, storeId);
 
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const existing = await prisma.product.findFirst({
+      where: { id, archivedAt: null },
+    });
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
@@ -142,7 +144,19 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     await requireAdmin();
     const { id } = await params;
-    await prisma.product.delete({ where: { id } });
+    const product = await prisma.product.findFirst({
+      where: { id, archivedAt: null },
+    });
+    if (!product) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    await prisma.product.update({
+      where: { id },
+      data: {
+        archivedAt: new Date(),
+        barcode: null,
+      },
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof AuthError) {

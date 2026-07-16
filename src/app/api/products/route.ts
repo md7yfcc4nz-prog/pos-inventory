@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get("filter");
     const supplier = searchParams.get("supplier")?.trim() || "";
 
-    const where: Prisma.ProductWhereInput = {};
+    const where: Prisma.ProductWhereInput = { archivedAt: null };
 
     if (q) {
       where.OR = [
