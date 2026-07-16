@@ -7,6 +7,7 @@ import {
   AuthError,
   assertStoreAccess,
   getActiveStoreId,
+  requireAdmin,
   requireUser,
   resolveStoreId,
 } from "@/lib/auth";
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await requireAdmin();
     const body = await request.json();
     const parsed = productSchema.safeParse(body);
     if (!parsed.success) {

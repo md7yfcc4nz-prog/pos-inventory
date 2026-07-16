@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { AuthError, requireUser } from "@/lib/auth";
+import { AuthError, requireAdmin } from "@/lib/auth";
 import { getUploadDir, mediaUrl } from "@/lib/paths";
 
 export async function POST(request: NextRequest) {
   try {
-    await requireUser();
+    await requireAdmin();
     const formData = await request.formData();
     const file = formData.get("file");
 

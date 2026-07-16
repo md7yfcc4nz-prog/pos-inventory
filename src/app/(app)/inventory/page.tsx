@@ -39,6 +39,7 @@ function InventoryInner() {
   const [filter, setFilter] = useState(searchParams.get("filter") || "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const suppliers = useMemo(() => {
     const set = new Set<string>();
@@ -70,6 +71,10 @@ function InventoryInner() {
 
   useEffect(() => {
     load();
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => setIsAdmin(data.user?.role === "ADMIN"))
+      .catch(() => setIsAdmin(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,9 +91,13 @@ function InventoryInner() {
   async function removeProduct(id: string) {
     if (!confirm("Delete this product?")) return;
     const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to delete product");
+      return;
     }
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    setError("");
   }
 
   return (
@@ -98,9 +107,11 @@ function InventoryInner() {
           <h1 className="page-title">Inventory</h1>
           <p className="page-sub">Search, filter, and manage products for the active store.</p>
         </div>
-        <Link className="btn btn-primary" href="/inventory/new">
-          Add product
-        </Link>
+        {isAdmin && (
+          <Link className="btn btn-primary" href="/inventory/new">
+            Add product
+          </Link>
+        )}
       </div>
 
       <div className="filters">
@@ -171,19 +182,19 @@ function InventoryInner() {
               <th>Price</th>
               <th>Expiry</th>
               <th>Status</th>
-              <th></th>
+              {isAdmin && <th></th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="empty">
+                <td colSpan={isAdmin ? 9 : 8} className="empty">
                   Loading…
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
-                <td colSpan={9} className="empty">
+                <td colSpan={isAdmin ? 9 : 8} className="empty">
                   No products match your filters
                 </td>
               </tr>
@@ -198,7 +209,11 @@ function InventoryInner() {
                       ) : (
                         <div className="thumb-fallback">{p.name.slice(0, 2).toUpperCase()}</div>
                       )}
-                      <Link href={`/inventory/${p.id}`}>{p.name}</Link>
+                      {isAdmin ? (
+                        <Link href={`/inventory/${p.id}`}>{p.name}</Link>
+                      ) : (
+                        <span>{p.name}</span>
+                      )}
                     </div>
                   </td>
                   <td>{categoryLabel(p.category)}</td>
@@ -216,16 +231,18 @@ function InventoryInner() {
                       <span className="badge badge-ok">OK</span>
                     )}
                   </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
-                        Edit
-                      </Link>
-                      <button className="btn btn-danger" onClick={() => removeProduct(p.id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+                  {isAdmin && (
+                    <td>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
+                          Edit
+                        </Link>
+                        <button className="btn btn-danger" onClick={() => removeProduct(p.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

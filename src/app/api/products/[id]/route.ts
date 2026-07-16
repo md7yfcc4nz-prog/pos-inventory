@@ -6,6 +6,7 @@ import {
   AuthError,
   assertStoreAccess,
   getActiveStoreId,
+  requireAdmin,
   requireUser,
   resolveStoreId,
 } from "@/lib/auth";
@@ -61,7 +62,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const user = await requireUser();
+    const user = await requireAdmin();
     const { id } = await params;
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
@@ -139,7 +140,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
-    await requireUser();
+    await requireAdmin();
     const { id } = await params;
     await prisma.product.delete({ where: { id } });
     return NextResponse.json({ ok: true });
