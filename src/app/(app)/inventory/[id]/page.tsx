@@ -156,11 +156,11 @@ export default function ProductFormPage() {
 
         <div className="split-3" style={{ marginBottom: "1rem" }}>
           <div className="field">
-            <label className="label">Cost</label>
+            <label className="label">Cost (FCFA)</label>
             <input className="input" type="number" step="0.01" min="0" value={form.cost} onChange={(e) => update("cost", e.target.value)} required />
           </div>
           <div className="field">
-            <label className="label">Sell price</label>
+            <label className="label">Sell price (FCFA)</label>
             <input className="input" type="number" step="0.01" min="0" value={form.price} onChange={(e) => update("price", e.target.value)} required />
           </div>
           <div className="field">

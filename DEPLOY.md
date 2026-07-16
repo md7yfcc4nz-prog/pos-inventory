@@ -1,4 +1,4 @@
-# Put ShelfLedger on the internet (no code on other laptops)
+# Put Kasuwa on the internet (no code on other laptops)
 
 Anyone with the link can open the site in a normal browser. They do **not** install Node or copy the project.
 
@@ -19,7 +19,7 @@ On your Dell, in PowerShell:
 cd C:\Users\ikwydick\Desktop\pos-inventory
 git init
 git add .
-git commit -m "ShelfLedger POS ready to host"
+git commit -m "Kasuwa POS ready to host"
 ```
 
 Then create a new empty repo on GitHub and push (GitHub will show the exact `git remote` / `git push` commands).

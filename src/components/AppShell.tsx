@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">ShelfLedger</div>
+          <div className="brand-mark">Kasuwa</div>
           <div className="brand-sub">Multi-store POS & inventory</div>
         </div>
         <nav className="nav-list">
@@ -119,6 +119,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </option>
               ))}
             </select>
+            <div style={{ fontSize: "0.78rem", color: "var(--ink-muted)", marginTop: 4 }}>
+              USD estimates use 600 FCFA = $1 USD
+            </div>
           </div>
           <button className="btn btn-secondary" onClick={logout}>
             Sign out

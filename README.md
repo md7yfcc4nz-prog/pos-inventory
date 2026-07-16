@@ -1,4 +1,4 @@
-# ShelfLedger — Multi-Store POS & Inventory
+# Kasuwa — Multi-Store POS & Inventory
 
 Browser-based point of sale and inventory system with admin/staff roles, multi-store support, low-stock and expiry alerts, barcodes, and product images.
 
@@ -148,7 +148,7 @@ npm run db:seed
 
 ### 5. Change branding (name, colors)
 
-1. App name in the sidebar: edit `src\components\AppShell.tsx` (look for `ShelfLedger`).
+1. App name in the sidebar: edit `src\components\AppShell.tsx` (look for `Kasuwa`).
 2. Colors: edit CSS variables at the top of `src\app\globals.css` (`--brand`, `--accent`, `--bg`, etc.).
 3. Browser tab title: edit `src\app\layout.tsx` (`metadata.title`).
 

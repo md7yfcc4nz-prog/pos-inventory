@@ -11,5 +11,5 @@ if [ "$SEED_ON_START" = "true" ]; then
   npm run db:seed || true
 fi
 
-echo "Starting ShelfLedger on port ${PORT:-3000}..."
+echo "Starting Kasuwa on port ${PORT:-3000}..."
 exec "$@"

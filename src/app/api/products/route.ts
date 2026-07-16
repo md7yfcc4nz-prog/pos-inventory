@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { Category } from "@/lib/constants";
+import { sendAdminNotification } from "@/lib/notifications";
 import {
   AuthError,
   assertStoreAccess,
@@ -11,7 +12,7 @@ import {
   requireUser,
   resolveStoreId,
 } from "@/lib/auth";
-import { isExpired, isLowStock } from "@/lib/utils";
+import { formatMoney, isExpired, isLowStock } from "@/lib/utils";
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -154,6 +155,23 @@ export async function POST(request: NextRequest) {
       include: {
         stock: { where: { storeId } },
       },
+    });
+
+    const store = await prisma.store.findUnique({
+      where: { id: storeId },
+      select: { name: true },
+    });
+    await sendAdminNotification({
+      subject: `Kasuwa product added — ${product.name}`,
+      text: [
+        "A product was added to Kasuwa inventory.",
+        `Product: ${product.name}`,
+        `Store: ${store?.name || "Unknown store"}`,
+        `Quantity: ${data.quantity}`,
+        `Cost: ${formatMoney(product.cost)}`,
+        `Sell price: ${formatMoney(product.price)}`,
+        `Added by: ${user.name}`,
+      ].join("\n"),
     });
 
     return NextResponse.json({ product }, { status: 201 });

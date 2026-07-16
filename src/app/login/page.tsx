@@ -35,7 +35,7 @@ function LoginForm() {
       <form className="login-card" onSubmit={onSubmit}>
         <div style={{ marginBottom: "1.4rem" }}>
           <div className="brand-mark" style={{ color: "var(--brand)" }}>
-            ShelfLedger
+            Kasuwa
           </div>
           <p className="page-sub" style={{ marginBottom: 0 }}>
             Sign in to manage inventory and sales across your stores.

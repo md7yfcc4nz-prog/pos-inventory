@@ -1,11 +1,15 @@
 import { Category, type Category as CategoryType } from "@/lib/constants";
 import { format, isBefore, addDays, startOfDay } from "date-fns";
 
+export const FCFA_PER_USD = 600;
+
 export function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
+  const fcfa = `${Math.round(value).toLocaleString("en-US")} FCFA`;
+  const usd = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value);
+  }).format(value / FCFA_PER_USD);
+  return `${fcfa} (${usd} USD)`;
 }
 
 export function formatDate(value: Date | string | null | undefined) {

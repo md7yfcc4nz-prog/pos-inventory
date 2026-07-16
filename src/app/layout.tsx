@@ -13,7 +13,7 @@ const body = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "ShelfLedger POS",
+  title: "Kasuwa POS",
   description: "Multi-store point of sale and inventory management",
 };
 

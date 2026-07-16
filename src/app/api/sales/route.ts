@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@/lib/constants";
+import { sendAdminNotification } from "@/lib/notifications";
+import { formatMoney } from "@/lib/utils";
 import {
   AuthError,
   assertStoreAccess,
@@ -133,8 +135,25 @@ export async function POST(request: NextRequest) {
         include: {
           items: { include: { product: true } },
           cashier: { select: { name: true } },
+          store: { select: { name: true } },
         },
       });
+    });
+
+    const itemSummary = sale.items
+      .map((item) => `${item.product.name} ×${item.quantity}`)
+      .join(", ");
+    await sendAdminNotification({
+      subject: `Kasuwa sale completed — ${formatMoney(sale.total)}`,
+      text: [
+        "A sale was completed in Kasuwa.",
+        `Store: ${sale.store.name}`,
+        `Cashier: ${sale.cashier.name}`,
+        `Payment: ${sale.paymentMethod}`,
+        `Items: ${itemSummary}`,
+        `Total: ${formatMoney(sale.total)}`,
+        `Date: ${sale.createdAt.toISOString()}`,
+      ].join("\n"),
     });
 
     return NextResponse.json({ sale }, { status: 201 });
