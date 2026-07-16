@@ -1,0 +1,106 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+
+type Store = {
+  id: string;
+  name: string;
+  address: string | null;
+};
+
+export default function AdminStoresPage() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    const res = await fetch("/api/stores");
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to load stores");
+      return;
+    }
+    setStores(data.stores);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    const res = await fetch("/api/stores", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, address }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to create store");
+      return;
+    }
+    setName("");
+    setAddress("");
+    setMessage("Store created");
+    load();
+  }
+
+  return (
+    <div>
+      <h1 className="page-title">Stores</h1>
+      <p className="page-sub">Manage multiple store locations from one admin account.</p>
+
+      {error && <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div>}
+      {message && (
+        <div className="alert" style={{ marginBottom: "1rem", background: "var(--brand-soft)", border: "1px solid #b7d8c8", color: "var(--brand)" }}>
+          {message}
+        </div>
+      )}
+
+      <div className="split-2">
+        <form className="card" style={{ padding: "1.2rem" }} onSubmit={onSubmit}>
+          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>Add store</h2>
+          <div className="field" style={{ marginBottom: "0.9rem" }}>
+            <label className="label">Name</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="field" style={{ marginBottom: "1rem" }}>
+            <label className="label">Address</label>
+            <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
+          </div>
+          <button className="btn btn-primary">Create store</button>
+        </form>
+
+        <div className="card table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stores.map((store) => (
+                <tr key={store.id}>
+                  <td>{store.name}</td>
+                  <td>{store.address || "—"}</td>
+                </tr>
+              ))}
+              {stores.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="empty">
+                    No stores yet
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

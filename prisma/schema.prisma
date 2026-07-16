@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  passwordHash String
+  role         String      @default("STAFF")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  stores       UserStore[]
+  sales        Sale[]
+}
+
+model Store {
+  id        String       @id @default(cuid())
+  name      String
+  address   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  users     UserStore[]
+  stock     StoreStock[]
+  sales     Sale[]
+}
+
+model UserStore {
+  userId  String
+  storeId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, storeId])
+}
+
+model Product {
+  id                String     @id @default(cuid())
+  name              String
+  category          String     @default("OTHER")
+  barcode           String?    @unique
+  supplier          String?
+  cost              Float      @default(0)
+  price             Float
+  lowStockThreshold Int        @default(10)
+  expiryDate        DateTime?
+  imagePath         String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  stock             StoreStock[]
+  saleItems         SaleItem[]
+}
+
+model StoreStock {
+  id        String  @id @default(cuid())
+  productId String
+  storeId   String
+  quantity  Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, storeId])
+}
+
+model Sale {
+  id            String     @id @default(cuid())
+  storeId       String
+  cashierId     String
+  paymentMethod String     @default("CASH")
+  subtotal      Float
+  total         Float
+  createdAt     DateTime   @default(now())
+  store         Store      @relation(fields: [storeId], references: [id])
+  cashier       User       @relation(fields: [cashierId], references: [id])
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Float
+  lineTotal Float
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+}
