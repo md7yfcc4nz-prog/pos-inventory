@@ -1,14 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  addMonths,
-  eachDayOfInterval,
-  endOfMonth,
-  format as formatCalendarDate,
-  parseISO,
-  startOfMonth,
-} from "date-fns";
 import { useLanguage } from "@/components/LanguageProvider";
 import { formatDate, formatMoney } from "@/lib/utils";
 
@@ -31,6 +23,8 @@ type Sale = {
 };
 
 type Report = {
+  from: string;
+  to: string;
   salesTotal: number;
   returnsTotal: number;
   netTotal: number;
@@ -38,85 +32,67 @@ type Report = {
   returnsCount: number;
 };
 
-type CalendarDay = Report;
-
-type SalesCalendar = {
-  month: string;
-  days: Record<string, CalendarDay>;
-};
-
 export default function SalesPage() {
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const [sales, setSales] = useState<Sale[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [calendarLoading, setCalendarLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "RETURNED">("ALL");
   const [busyId, setBusyId] = useState("");
-  const [calendarMonth, setCalendarMonth] = useState(
-    formatCalendarDate(new Date(), "yyyy-MM")
-  );
-  const [calendar, setCalendar] = useState<SalesCalendar | null>(null);
-  const [reports, setReports] = useState<{
-    allTime: Report;
-    daily: Report;
-    weekly: Report;
-    monthly: Report;
-  } | null>(null);
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const [report, setReport] = useState<Report | null>(null);
 
   useEffect(() => {
-    setCalendarLoading(true);
-    Promise.all([
-      fetch(`/api/sales?month=${calendarMonth}`),
-      fetch("/api/auth/me"),
-    ])
+    Promise.all([fetch("/api/sales"), fetch("/api/auth/me")])
       .then(async ([salesRes, meRes]) => {
         const salesData = await salesRes.json();
         const meData = await meRes.json();
         if (!salesRes.ok) throw new Error(salesData.error || "Failed to load sales");
         setSales(salesData.sales);
-        setReports(salesData.reports);
-        setCalendar(salesData.calendar);
         setIsAdmin(meData.user?.role === "ADMIN");
       })
       .catch((err) => setError(err.message))
-      .finally(() => {
-        setLoading(false);
-        setCalendarLoading(false);
-      });
-  }, [calendarMonth]);
+      .finally(() => setLoading(false));
+  }, []);
 
   const visibleSales = useMemo(
     () => sales.filter((sale) => filter === "ALL" || sale.status === filter),
     [filter, sales]
   );
 
-  const calendarView = useMemo(() => {
-    const monthStart = startOfMonth(parseISO(`${calendarMonth}-01`));
-    const days = eachDayOfInterval({
-      start: monthStart,
-      end: endOfMonth(monthStart),
-    });
-    const leadingDays = (monthStart.getDay() + 6) % 7;
-    const weekdayFormatter = new Intl.DateTimeFormat(language, { weekday: "short" });
-    const weekdays = Array.from({ length: 7 }, (_, index) =>
-      weekdayFormatter.format(new Date(2026, 0, 5 + index))
-    );
-    const monthLabel = new Intl.DateTimeFormat(language, {
-      month: "long",
-      year: "numeric",
-    }).format(monthStart);
-    return { days, leadingDays, monthLabel, weekdays };
-  }, [calendarMonth, language]);
-
-  function changeMonth(offset: number) {
-    const current = parseISO(`${calendarMonth}-01`);
-    setCalendarMonth(formatCalendarDate(addMonths(current, offset), "yyyy-MM"));
+  async function generateReport(from = reportFrom, to = reportTo) {
+    if (!from || !to) {
+      setError(t("selectReportDates"));
+      return;
+    }
+    if (from > to) {
+      setError(t("invalidDateRange"));
+      return;
+    }
+    setReportLoading(true);
+    setError("");
+    const params = new URLSearchParams({ from, to });
+    const res = await fetch(`/api/sales?${params.toString()}`);
+    const data = await res.json();
+    setReportLoading(false);
+    if (!res.ok) {
+      setError(data.error || t("reportLoadFailed"));
+      return;
+    }
+    setReport(data.requestedReport);
   }
 
-  function formatCalendarMoney(value: number) {
-    return `${Math.round(value).toLocaleString(language)} FCFA`;
+  function generateTodayReport() {
+    const now = new Date();
+    const today = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 10);
+    setReportFrom(today);
+    setReportTo(today);
+    void generateReport(today, today);
   }
 
   async function returnSale(sale: Sale) {
@@ -140,12 +116,11 @@ export default function SalesPage() {
     setSales((current) =>
       current.map((item) => (item.id === sale.id ? data.sale : item))
     );
-    const refreshed = await fetch(`/api/sales?month=${calendarMonth}`);
+    const refreshed = await fetch("/api/sales");
     if (refreshed.ok) {
       const refreshedData = await refreshed.json();
       setSales(refreshedData.sales);
-      setReports(refreshedData.reports);
-      setCalendar(refreshedData.calendar);
+      setReport(null);
     }
   }
 
@@ -156,115 +131,83 @@ export default function SalesPage() {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {reports && (
-        <>
+      <section className="card report-request">
+        <div>
+          <h2 className="section-title">{t("salesReport")}</h2>
+          <p className="page-sub">{t("reportRequestSubtitle")}</p>
+        </div>
+        <div className="report-request-fields">
+          <div className="field">
+            <label className="label" htmlFor="report-from">{t("startDate")}</label>
+            <input
+              className="input"
+              id="report-from"
+              type="date"
+              value={reportFrom}
+              max={reportTo || undefined}
+              onChange={(event) => {
+                setReportFrom(event.target.value);
+                setReport(null);
+              }}
+            />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="report-to">{t("endDate")}</label>
+            <input
+              className="input"
+              id="report-to"
+              type="date"
+              value={reportTo}
+              min={reportFrom || undefined}
+              onChange={(event) => {
+                setReportTo(event.target.value);
+                setReport(null);
+              }}
+            />
+          </div>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            disabled={reportLoading}
+            onClick={generateTodayReport}
+          >
+            {t("today")}
+          </button>
+          <button
+            className="btn btn-primary"
+            type="button"
+            disabled={reportLoading}
+            onClick={() => void generateReport()}
+          >
+            {reportLoading ? t("generating") : t("generateReport")}
+          </button>
+        </div>
+      </section>
+
+      {report && (
+        <section aria-live="polite">
+          <div className="report-range-label">
+            {t("reportFor")} <strong>{report.from}</strong> — <strong>{report.to}</strong>
+          </div>
           <div className="metric-grid sales-total-grid" style={{ marginBottom: "1rem" }}>
             <div className="metric-card">
               <div className="metric-label">{t("totalSales")}</div>
-              <div className="metric-value">{formatMoney(reports.allTime.salesTotal)}</div>
-              <div className="report-count">{reports.allTime.salesCount} {t("transactions")}</div>
+              <div className="metric-value">{formatMoney(report.salesTotal)}</div>
+              <div className="report-count">{report.salesCount} {t("transactions")}</div>
             </div>
             <div className="metric-card">
               <div className="metric-label">{t("totalReturns")}</div>
               <div className="metric-value" style={{ color: "var(--warn)" }}>
-                {formatMoney(reports.allTime.returnsTotal)}
+                {formatMoney(report.returnsTotal)}
               </div>
-              <div className="report-count">{reports.allTime.returnsCount} {t("transactions")}</div>
+              <div className="report-count">{report.returnsCount} {t("transactions")}</div>
             </div>
             <div className="metric-card">
               <div className="metric-label">{t("netSales")}</div>
-              <div className="metric-value">{formatMoney(reports.allTime.netTotal)}</div>
+              <div className="metric-value">{formatMoney(report.netTotal)}</div>
             </div>
           </div>
-
-          <h2 className="section-title">{t("salesReport")}</h2>
-          <div className="report-grid">
-            {([
-              ["today", reports.daily],
-              ["thisWeek", reports.weekly],
-              ["thisMonth", reports.monthly],
-            ] as Array<[string, Report]>).map(([label, report]) => (
-              <div className="card report-card" key={label}>
-                <strong>{t(label)}</strong>
-                <div><span>{t("totalSales")}</span><b>{formatMoney(report.salesTotal)}</b></div>
-                <div><span>{t("totalReturns")}</span><b>{formatMoney(report.returnsTotal)}</b></div>
-                <div><span>{t("netSales")}</span><b>{formatMoney(report.netTotal)}</b></div>
-              </div>
-            ))}
-          </div>
-
-          <section className="card sales-calendar">
-            <div className="calendar-header">
-              <div>
-                <h2 className="section-title">{t("dailySalesCalendar")}</h2>
-                <p className="page-sub">{t("dailySalesCalendarSubtitle")}</p>
-              </div>
-              <div className="calendar-navigation">
-                <button
-                  className="btn btn-secondary calendar-nav-button"
-                  type="button"
-                  onClick={() => changeMonth(-1)}
-                  aria-label={t("previousMonth")}
-                >
-                  ‹
-                </button>
-                <strong className="calendar-month">{calendarView.monthLabel}</strong>
-                <button
-                  className="btn btn-secondary calendar-nav-button"
-                  type="button"
-                  onClick={() => changeMonth(1)}
-                  aria-label={t("nextMonth")}
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-
-            <div className="calendar-grid" aria-busy={calendarLoading}>
-              {calendarView.weekdays.map((weekday) => (
-                <div className="calendar-weekday" key={weekday}>
-                  {weekday}
-                </div>
-              ))}
-              {Array.from({ length: calendarView.leadingDays }, (_, index) => (
-                <div className="calendar-day calendar-day-empty" key={`empty-${index}`} />
-              ))}
-              {calendarView.days.map((date) => {
-                const dateKey = formatCalendarDate(date, "yyyy-MM-dd");
-                const day = calendar?.days[dateKey];
-                const isToday =
-                  dateKey === formatCalendarDate(new Date(), "yyyy-MM-dd");
-                return (
-                  <div
-                    className={`calendar-day${isToday ? " calendar-day-today" : ""}`}
-                    key={dateKey}
-                  >
-                    <span className="calendar-date">{date.getDate()}</span>
-                    {calendarLoading ? (
-                      <span className="calendar-loading">…</span>
-                    ) : day ? (
-                      <div className="calendar-day-sales">
-                        <strong title={formatMoney(day.salesTotal)}>
-                          {formatCalendarMoney(day.salesTotal)}
-                        </strong>
-                        <span>
-                          {day.salesCount} {t(day.salesCount === 1 ? "transaction" : "transactions")}
-                        </span>
-                        {day.returnsTotal > 0 && (
-                          <span className="calendar-returns">
-                            -{formatCalendarMoney(day.returnsTotal)} {t("returns").toLowerCase()}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="calendar-no-sales">{t("noSales")}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </>
+        </section>
       )}
 
       <div className="filters">
