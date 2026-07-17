@@ -3,20 +3,21 @@
 :root {
   --bg: #f3f6f4;
   --bg-elevated: #ffffff;
-  --ink: #14231c;
+  --ink: #0b1f3a;
   --ink-muted: #5b6b63;
   --line: #d7e0db;
-  --brand: #0f6b4c;
-  --brand-dark: #0a4d37;
+  --brand: #1f9d55;
+  --brand-dark: #177a41;
   --brand-soft: #e4f3ec;
-  --accent: #c45c26;
-  --accent-soft: #f8ebe3;
+  --brand-navy: #0b1f3a;
+  --accent: #1f9d55;
+  --accent-soft: #e4f3ec;
   --danger: #b42318;
   --danger-soft: #fdeceb;
   --warn: #a15c00;
   --warn-soft: #fff4e5;
-  --ok: #0f6b4c;
-  --shadow: 0 10px 30px rgba(20, 35, 28, 0.06);
+  --ok: #1f9d55;
+  --shadow: 0 10px 30px rgba(11, 31, 58, 0.08);
   --radius: 14px;
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Source Sans 3", "Segoe UI", sans-serif;
@@ -66,7 +67,7 @@ textarea {
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #103f2f 0%, #0b2d22 100%);
+  background: linear-gradient(180deg, #0f2748 0%, #0b1f3a 100%);
   color: #f4faf7;
   padding: 1.4rem 1rem;
   display: flex;
@@ -79,17 +80,37 @@ textarea {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.brand-logo {
+  width: 100%;
+  max-width: 148px;
+  height: auto;
+  display: block;
+  margin: 0 auto 0.75rem;
+  border-radius: 12px;
+  background: white;
+  padding: 0.45rem;
+}
+
 .brand-mark {
   font-family: var(--font-display);
-  font-size: 1.55rem;
+  font-size: 1.35rem;
   letter-spacing: -0.03em;
   line-height: 1.1;
+  text-align: center;
 }
 
 .brand-sub {
   margin-top: 0.35rem;
   color: rgba(244, 250, 247, 0.7);
   font-size: 0.85rem;
+  text-align: center;
+}
+
+.login-logo {
+  width: min(180px, 70%);
+  height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 .nav-list {

@@ -35,9 +35,11 @@ function LoginForm() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={onSubmit}>
-        <div style={{ marginBottom: "1.4rem" }}>
-          <div className="brand-mark" style={{ color: "var(--brand)" }}>
-            Kasuwa
+        <div style={{ marginBottom: "1.4rem", textAlign: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Kasuwa Manager" className="login-logo" />
+          <div className="brand-mark" style={{ color: "var(--brand-navy)", marginTop: "0.75rem" }}>
+            Kasuwa Manager
           </div>
           <p className="page-sub" style={{ marginBottom: 0 }}>
             {t("loginSubtitle")}

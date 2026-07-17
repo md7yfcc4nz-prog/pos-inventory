@@ -162,9 +162,9 @@ export async function POST(request: NextRequest) {
       where: { id: storeId },
       select: { name: true },
     });
-    const subject = `Kasuwa product added — ${product.name}`;
+    const subject = `Kasuwa Manager product added — ${product.name}`;
     const notificationText = [
-        "A product was added to Kasuwa inventory.",
+        "A product was added to Kasuwa Manager inventory.",
         `Product: ${product.name}`,
         `Store: ${store?.name || "Unknown store"}`,
         `Quantity: ${data.quantity}`,

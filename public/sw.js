@@ -10,10 +10,10 @@ self.addEventListener("push", (event) => {
       }
 
       const data = event.data?.json() || {};
-      await self.registration.showNotification(data.title || "Kasuwa", {
+      await self.registration.showNotification(data.title || "Kasuwa Manager", {
         body: data.body || "You have a new alert.",
-        icon: "/icon.svg",
-        badge: "/icon.svg",
+        icon: "/logo.png",
+        badge: "/logo.png",
         data: { url: data.url || "/" },
         tag: data.tag || "kasuwa-alert",
         renotify: true,

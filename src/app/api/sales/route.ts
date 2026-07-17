@@ -192,9 +192,9 @@ export async function POST(request: NextRequest) {
     const itemSummary = sale.items
       .map((item) => `${item.product.name} ×${item.quantity}`)
       .join(", ");
-    const subject = `Kasuwa sale completed — ${formatMoney(sale.total)}`;
+    const subject = `Kasuwa Manager sale completed — ${formatMoney(sale.total)}`;
     const notificationText = [
-        "A sale was completed in Kasuwa.",
+        "A sale was completed in Kasuwa Manager.",
         `Store: ${sale.store.name}`,
         `Cashier: ${sale.cashier.name}`,
         `Payment: ${sale.paymentMethod}`,

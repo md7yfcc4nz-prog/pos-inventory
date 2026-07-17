@@ -203,8 +203,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {navOpen && <button className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-label="Close menu" />}
       <aside className={cn("sidebar", navOpen && "sidebar-open")}>
         <div className="brand">
-          <div className="brand-mark">Kasuwa</div>
-          <div className="brand-sub">Multi-store POS & inventory</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Kasuwa Manager" className="brand-logo" />
+          <div className="brand-mark">Kasuwa Manager</div>
+          <div className="brand-sub">POS & inventory</div>
         </div>
         <nav className="nav-list">
           {links

@@ -17,7 +17,7 @@ export async function sendAdminNotification({
   }
 
   const to = process.env.ADMIN_NOTIFICATION_EMAIL || DEFAULT_ADMIN_EMAIL;
-  const from = process.env.EMAIL_FROM || "Kasuwa <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "Kasuwa Manager <onboarding@resend.dev>";
 
   try {
     const response = await fetch(RESEND_API_URL, {
