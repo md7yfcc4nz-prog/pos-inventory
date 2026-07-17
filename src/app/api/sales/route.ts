@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@/lib/constants";
 import { sendAdminNotification } from "@/lib/notifications";
+import { sendAdminPush } from "@/lib/push";
 import { formatMoney } from "@/lib/utils";
 import {
   AuthError,
@@ -163,7 +164,39 @@ export async function POST(request: NextRequest) {
         },
       }),
       sendAdminNotification({ subject, text: notificationText }),
+      sendAdminPush({
+        title: "Sale completed",
+        body: `${sale.store.name}: ${formatMoney(sale.total)} — ${itemSummary}`,
+        url: "/sales",
+      }),
     ]);
+
+    const soldProductIds = sale.items.map((item) => item.productId);
+    const stockRows = await prisma.storeStock.findMany({
+      where: { storeId: sale.storeId, productId: { in: soldProductIds } },
+      include: { product: true },
+    });
+    const lowStockNames = stockRows
+      .filter((row) => row.quantity <= row.product.lowStockThreshold)
+      .map((row) => `${row.product.name} (${row.quantity})`);
+    if (lowStockNames.length > 0) {
+      const lowStockMessage = `${sale.store.name}: ${lowStockNames.join(", ")}`;
+      await Promise.allSettled([
+        prisma.notification.create({
+          data: {
+            type: "LOW_STOCK",
+            title: "Low stock alert",
+            message: lowStockMessage,
+            storeId: sale.storeId,
+          },
+        }),
+        sendAdminPush({
+          title: "Low stock alert",
+          body: lowStockMessage,
+          url: "/inventory?filter=low_stock",
+        }),
+      ]);
+    }
 
     return NextResponse.json({ sale }, { status: 201 });
   } catch (error) {

@@ -203,7 +203,7 @@ function InventoryInner() {
             ) : (
               products.map((p) => (
                 <tr key={p.id}>
-                  <td>
+                  <td data-label={t("product")}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {p.imagePath ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -218,13 +218,13 @@ function InventoryInner() {
                       )}
                     </div>
                   </td>
-                  <td>{t(p.category === "DRINKS" ? "drinks" : p.category === "MEDICINE" ? "medicine" : "other")}</td>
-                  <td>{p.barcode || "—"}</td>
-                  <td>{p.supplier || "—"}</td>
-                  <td>{p.quantity}</td>
-                  <td>{formatMoney(p.price)}</td>
-                  <td>{formatDate(p.expiryDate)}</td>
-                  <td>
+                  <td data-label={t("category")}>{t(p.category === "DRINKS" ? "drinks" : p.category === "MEDICINE" ? "medicine" : "other")}</td>
+                  <td data-label={t("barcode")}>{p.barcode || "—"}</td>
+                  <td data-label={t("supplier")}>{p.supplier || "—"}</td>
+                  <td data-label={t("quantity")}>{p.quantity}</td>
+                  <td data-label={t("price")}>{formatMoney(p.price)}</td>
+                  <td data-label={t("expiry")}>{formatDate(p.expiryDate)}</td>
+                  <td data-label={t("status")}>
                     {p.expired ? (
                       <span className="badge badge-danger">{t("expired")}</span>
                     ) : p.lowStock ? (
@@ -234,7 +234,7 @@ function InventoryInner() {
                     )}
                   </td>
                   {isAdmin && (
-                    <td>
+                    <td data-label="">
                       <div style={{ display: "flex", gap: 8 }}>
                         <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
                           {t("edit")}

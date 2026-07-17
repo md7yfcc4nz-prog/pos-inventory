@@ -121,15 +121,15 @@ export default function SalesPage() {
             ) : (
               visibleSales.map((sale) => (
                 <tr key={sale.id}>
-                  <td>{formatDate(sale.createdAt)}</td>
-                  <td>{sale.cashier.name}</td>
-                  <td>
+                  <td data-label={t("date")}>{formatDate(sale.createdAt)}</td>
+                  <td data-label={t("cashier")}>{sale.cashier.name}</td>
+                  <td data-label={t("items")}>
                     {sale.items.map((i) => `${i.product.name} ×${i.quantity}`).join(", ")}
                   </td>
-                  <td>
+                  <td data-label={t("payment")}>
                     <span className="badge badge-neutral">{sale.paymentMethod}</span>
                   </td>
-                  <td>
+                  <td data-label={t("status")}>
                     {sale.status === "RETURNED" ? (
                       <div>
                         <span className="badge badge-warn">{t("returned")}</span>
@@ -143,11 +143,11 @@ export default function SalesPage() {
                       <span className="badge badge-ok">{t("completed")}</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label={t("total")}>
                     {sale.status === "RETURNED" ? `-${formatMoney(sale.total)}` : formatMoney(sale.total)}
                   </td>
                   {isAdmin && (
-                    <td>
+                    <td data-label="">
                       {sale.status !== "RETURNED" && (
                         <button
                           className="btn btn-danger"

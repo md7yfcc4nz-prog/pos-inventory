@@ -215,13 +215,13 @@ export default function PosPage() {
                 <tbody>
                   {cart.map((item) => (
                     <tr key={item.productId}>
-                      <td>
+                      <td data-label={t("item")}>
                         <div style={{ fontWeight: 600 }}>{item.name}</div>
                         <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
                           {formatMoney(item.unitPrice)}
                         </div>
                       </td>
-                      <td>
+                      <td data-label={t("quantity")}>
                         <input
                           className="input"
                           style={{ width: 72 }}
@@ -232,8 +232,8 @@ export default function PosPage() {
                           onChange={(e) => setQty(item.productId, Number(e.target.value))}
                         />
                       </td>
-                      <td>{formatMoney(item.unitPrice * item.quantity)}</td>
-                      <td>
+                      <td data-label={t("total")}>{formatMoney(item.unitPrice * item.quantity)}</td>
+                      <td data-label="">
                         <button className="btn btn-danger" type="button" onClick={() => removeItem(item.productId)}>
                           {t("remove")}
                         </button>

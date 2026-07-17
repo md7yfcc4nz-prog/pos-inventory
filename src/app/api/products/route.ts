@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { Category } from "@/lib/constants";
 import { sendAdminNotification } from "@/lib/notifications";
+import { sendAdminPush } from "@/lib/push";
 import {
   AuthError,
   assertStoreAccess,
@@ -181,6 +182,11 @@ export async function POST(request: NextRequest) {
         },
       }),
       sendAdminNotification({ subject, text: notificationText }),
+      sendAdminPush({
+        title: "Product added",
+        body: `${product.name} ×${data.quantity} added to ${store?.name || "inventory"}`,
+        url: "/inventory",
+      }),
     ]);
 
     return NextResponse.json({ product }, { status: 201 });

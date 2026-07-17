@@ -1,0 +1,17 @@
+{
+  "name": "Kasuwa POS & Inventory",
+  "short_name": "Kasuwa",
+  "description": "Mobile point of sale and inventory management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f6f4",
+  "theme_color": "#0f6b4c",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

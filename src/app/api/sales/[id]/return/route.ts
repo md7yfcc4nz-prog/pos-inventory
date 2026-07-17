@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AuthError, requireAdmin } from "@/lib/auth";
+import { sendAdminPush } from "@/lib/push";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -78,6 +79,11 @@ export async function POST(request: NextRequest, { params }: Params) {
         storeId: sale.storeId,
       },
     }).catch((error) => console.error("Failed to create return notification", error));
+    await sendAdminPush({
+      title: "Sale returned",
+      body: `${admin.name} returned a sale worth ${sale.total} FCFA`,
+      url: "/sales",
+    }).catch((error) => console.error("Failed to send return push", error));
 
     return NextResponse.json({ sale });
   } catch (error) {

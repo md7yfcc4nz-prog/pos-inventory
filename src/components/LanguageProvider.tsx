@@ -121,6 +121,10 @@ const translations: Record<Language, Record<string, string>> = {
     noExpiryAlerts: "No expiry alerts",
     allStores: "All stores",
     assignmentSaved: "Store assignment saved",
+    enableAlerts: "Enable phone alerts",
+    alertsOn: "Phone alerts on",
+    disableAlerts: "Turn off phone alerts",
+    pushDenied: "Notifications were blocked. Enable them in your browser settings.",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -238,6 +242,10 @@ const translations: Record<Language, Record<string, string>> = {
     noExpiryAlerts: "Aucune alerte d’expiration",
     allStores: "Tous les magasins",
     assignmentSaved: "Attribution du magasin enregistrée",
+    enableAlerts: "Activer les alertes téléphone",
+    alertsOn: "Alertes téléphone activées",
+    disableAlerts: "Désactiver les alertes téléphone",
+    pushDenied: "Les notifications sont bloquées. Activez-les dans les réglages du navigateur.",
   },
 };
 

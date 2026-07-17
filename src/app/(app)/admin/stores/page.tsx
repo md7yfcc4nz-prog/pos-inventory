@@ -110,9 +110,9 @@ export default function AdminStoresPage() {
             <tbody>
               {stores.map((store) => (
                 <tr key={store.id}>
-                  <td>{store.name}</td>
-                  <td>{store.address || "—"}</td>
-                  <td>
+                  <td data-label={t("name")}>{store.name}</td>
+                  <td data-label={t("address")}>{store.address || "—"}</td>
+                  <td data-label="">
                     <button
                       className="btn btn-danger"
                       onClick={() => removeStore(store)}

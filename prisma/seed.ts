@@ -9,6 +9,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   await prisma.notification.deleteMany();
+  await prisma.pushSubscription.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.storeStock.deleteMany();

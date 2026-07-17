@@ -136,15 +136,15 @@ export default function DashboardPage() {
               <tbody>
                 {data.recent.map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label={t("product")}>
                       <Link href={`/inventory/${item.id}`}>{item.name}</Link>
                       <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
                         {formatDate(item.createdAt)}
                       </div>
                     </td>
-                    <td>{t(item.category === "DRINKS" ? "drinks" : item.category === "MEDICINE" ? "medicine" : "other")}</td>
-                    <td>{item.quantity}</td>
-                    <td>{formatMoney(item.price)}</td>
+                    <td data-label={t("category")}>{t(item.category === "DRINKS" ? "drinks" : item.category === "MEDICINE" ? "medicine" : "other")}</td>
+                    <td data-label={t("quantity")}>{item.quantity}</td>
+                    <td data-label={t("price")}>{formatMoney(item.price)}</td>
                   </tr>
                 ))}
                 {data.recent.length === 0 && (
@@ -175,15 +175,15 @@ export default function DashboardPage() {
               <tbody>
                 {[...data.expired, ...data.nearExpiry].map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label={t("product")}>
                       <Link href={`/inventory/${item.id}`}>{item.name}</Link>
                     </td>
-                    <td>
+                    <td data-label={t("expiry")}>
                       <span className={data.expired.some((e) => e.id === item.id) ? "badge badge-danger" : "badge badge-warn"}>
                         {formatDate(item.expiryDate)}
                       </span>
                     </td>
-                    <td>{item.quantity}</td>
+                    <td data-label={t("quantity")}>{item.quantity}</td>
                   </tr>
                 ))}
                 {data.expired.length === 0 && data.nearExpiry.length === 0 && (

@@ -629,16 +629,80 @@ table.data th {
     display: none;
   }
 
+  .push-btn span {
+    display: none;
+  }
+
+  .push-btn {
+    padding-inline: 0.75rem;
+  }
+
   .content {
     padding: 1rem;
   }
 
-  table.data {
-    min-width: 680px;
+  .table-wrap {
+    overflow: visible;
   }
 
-  .table-wrap {
-    -webkit-overflow-scrolling: touch;
+  table.data,
+  table.data tbody,
+  table.data tr,
+  table.data td {
+    display: block;
+    width: 100%;
+  }
+
+  table.data thead {
+    display: none;
+  }
+
+  table.data tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  table.data tr {
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: white;
+    overflow: hidden;
+  }
+
+  table.data td {
+    display: grid;
+    grid-template-columns: minmax(92px, 38%) 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+    overflow-wrap: anywhere;
+  }
+
+  table.data td::before {
+    content: attr(data-label);
+    color: var(--ink-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  table.data td[colspan] {
+    display: block;
+  }
+
+  table.data td[colspan]::before {
+    display: none;
+  }
+
+  table.data td:last-child {
+    border-bottom: 0;
+  }
+
+  table.data td .btn {
+    width: 100%;
   }
 
   .metric-grid,

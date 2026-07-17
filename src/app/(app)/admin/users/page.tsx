@@ -169,14 +169,14 @@ export default function AdminUsersPage() {
             <tbody>
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td>
+                  <td data-label={t("name")}>
                     <div style={{ fontWeight: 600 }}>{user.name}</div>
                     <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>{user.email}</div>
                   </td>
-                  <td>
+                  <td data-label={t("role")}>
                     <span className="badge badge-neutral">{user.role}</span>
                   </td>
-                  <td>
+                  <td data-label={t("stores")}>
                     {user.role === "ADMIN" ? (
                       t("allStores")
                     ) : (
@@ -196,7 +196,7 @@ export default function AdminUsersPage() {
                       </select>
                     )}
                   </td>
-                  <td>
+                  <td data-label="">
                     <button className="btn btn-danger" onClick={() => removeUser(user.id)}>
                       {t("delete")}
                     </button>

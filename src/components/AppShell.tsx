@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 type Store = { id: string; name: string };
 type User = { id: string; name: string; email: string; role: "ADMIN" | "STAFF" };
-type Notification = {
+type AppNotification = {
   id: string;
   title: string;
   message: string;
@@ -35,8 +35,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [navOpen, setNavOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +80,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user?.role]);
 
+  useEffect(() => {
+    if (user?.role !== "ADMIN") return;
+    const supported =
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      "Notification" in window;
+    setPushSupported(supported);
+    if (!supported) return;
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => setPushEnabled(Boolean(subscription)))
+      .catch((error) => console.error("Push setup failed:", error));
+  }, [user?.role]);
+
   async function switchStore(storeId: string) {
     setActiveStoreId(storeId);
     await fetch("/api/stores/switch", {
@@ -110,6 +128,64 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     await fetch("/api/notifications", { method: "DELETE" });
     setNotifications([]);
     setUnreadCount(0);
+  }
+
+  function urlBase64ToUint8Array(value: string) {
+    const padding = "=".repeat((4 - (value.length % 4)) % 4);
+    const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = window.atob(base64);
+    return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
+  }
+
+  async function enablePush() {
+    setPushBusy(true);
+    try {
+      const permission = await window.Notification.requestPermission();
+      if (permission !== "granted") {
+        alert(t("pushDenied"));
+        return;
+      }
+      const keyRes = await fetch("/api/push");
+      const keyData = await keyRes.json();
+      if (!keyRes.ok) throw new Error(keyData.error || "Push setup failed");
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const subscription =
+        (await registration.pushManager.getSubscription()) ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+        }));
+      const res = await fetch("/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+      if (!res.ok) throw new Error("Failed to save phone alerts");
+      setPushEnabled(true);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Push setup failed");
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function disablePush() {
+    setPushBusy(true);
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+      const subscription = await registration?.pushManager.getSubscription();
+      if (subscription) {
+        await fetch("/api/push", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        });
+        await subscription.unsubscribe();
+      }
+      setPushEnabled(false);
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   const activeStore = stores.find((store) => store.id === activeStoreId);
@@ -194,6 +270,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <option value="fr">FR</option>
             </select>
             {user?.role === "ADMIN" && (
+              <>
+              {pushSupported && (
+                <button
+                  className={cn("btn", pushEnabled ? "btn-primary" : "btn-secondary", "push-btn")}
+                  disabled={pushBusy}
+                  onClick={pushEnabled ? disablePush : enablePush}
+                  title={pushEnabled ? t("disableAlerts") : t("enableAlerts")}
+                  type="button"
+                >
+                  {pushEnabled ? "📲✓" : "📲"}
+                  <span>{pushEnabled ? t("alertsOn") : t("enableAlerts")}</span>
+                </button>
+              )}
               <div className="notification-wrap">
                 <button
                   className="btn btn-secondary notification-btn"
@@ -230,6 +319,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
               </div>
+              </>
             )}
             <button className="btn btn-secondary signout-btn" onClick={logout}>
               {t("signOut")}

@@ -16,6 +16,8 @@ const body = Source_Sans_3({
 export const metadata: Metadata = {
   title: "Kasuwa POS",
   description: "Multi-store point of sale and inventory management",
+  manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
 };
 
 export default function RootLayout({
