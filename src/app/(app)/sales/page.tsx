@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  format as formatCalendarDate,
+  parseISO,
+  startOfMonth,
+} from "date-fns";
 import { useLanguage } from "@/components/LanguageProvider";
 import { formatDate, formatMoney } from "@/lib/utils";
 
@@ -30,14 +38,26 @@ type Report = {
   returnsCount: number;
 };
 
+type CalendarDay = Report;
+
+type SalesCalendar = {
+  month: string;
+  days: Record<string, CalendarDay>;
+};
+
 export default function SalesPage() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [sales, setSales] = useState<Sale[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [calendarLoading, setCalendarLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "RETURNED">("ALL");
   const [busyId, setBusyId] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(
+    formatCalendarDate(new Date(), "yyyy-MM")
+  );
+  const [calendar, setCalendar] = useState<SalesCalendar | null>(null);
   const [reports, setReports] = useState<{
     allTime: Report;
     daily: Report;
@@ -46,23 +66,58 @@ export default function SalesPage() {
   } | null>(null);
 
   useEffect(() => {
-    Promise.all([fetch("/api/sales"), fetch("/api/auth/me")])
+    setCalendarLoading(true);
+    Promise.all([
+      fetch(`/api/sales?month=${calendarMonth}`),
+      fetch("/api/auth/me"),
+    ])
       .then(async ([salesRes, meRes]) => {
         const salesData = await salesRes.json();
         const meData = await meRes.json();
         if (!salesRes.ok) throw new Error(salesData.error || "Failed to load sales");
         setSales(salesData.sales);
         setReports(salesData.reports);
+        setCalendar(salesData.calendar);
         setIsAdmin(meData.user?.role === "ADMIN");
       })
       .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => {
+        setLoading(false);
+        setCalendarLoading(false);
+      });
+  }, [calendarMonth]);
 
   const visibleSales = useMemo(
     () => sales.filter((sale) => filter === "ALL" || sale.status === filter),
     [filter, sales]
   );
+
+  const calendarView = useMemo(() => {
+    const monthStart = startOfMonth(parseISO(`${calendarMonth}-01`));
+    const days = eachDayOfInterval({
+      start: monthStart,
+      end: endOfMonth(monthStart),
+    });
+    const leadingDays = (monthStart.getDay() + 6) % 7;
+    const weekdayFormatter = new Intl.DateTimeFormat(language, { weekday: "short" });
+    const weekdays = Array.from({ length: 7 }, (_, index) =>
+      weekdayFormatter.format(new Date(2026, 0, 5 + index))
+    );
+    const monthLabel = new Intl.DateTimeFormat(language, {
+      month: "long",
+      year: "numeric",
+    }).format(monthStart);
+    return { days, leadingDays, monthLabel, weekdays };
+  }, [calendarMonth, language]);
+
+  function changeMonth(offset: number) {
+    const current = parseISO(`${calendarMonth}-01`);
+    setCalendarMonth(formatCalendarDate(addMonths(current, offset), "yyyy-MM"));
+  }
+
+  function formatCalendarMoney(value: number) {
+    return `${Math.round(value).toLocaleString(language)} FCFA`;
+  }
 
   async function returnSale(sale: Sale) {
     if (!confirm("Return this entire sale? Its items will be added back to inventory.")) {
@@ -85,11 +140,12 @@ export default function SalesPage() {
     setSales((current) =>
       current.map((item) => (item.id === sale.id ? data.sale : item))
     );
-    const refreshed = await fetch("/api/sales");
+    const refreshed = await fetch(`/api/sales?month=${calendarMonth}`);
     if (refreshed.ok) {
       const refreshedData = await refreshed.json();
       setSales(refreshedData.sales);
       setReports(refreshedData.reports);
+      setCalendar(refreshedData.calendar);
     }
   }
 
@@ -136,6 +192,78 @@ export default function SalesPage() {
               </div>
             ))}
           </div>
+
+          <section className="card sales-calendar">
+            <div className="calendar-header">
+              <div>
+                <h2 className="section-title">{t("dailySalesCalendar")}</h2>
+                <p className="page-sub">{t("dailySalesCalendarSubtitle")}</p>
+              </div>
+              <div className="calendar-navigation">
+                <button
+                  className="btn btn-secondary calendar-nav-button"
+                  type="button"
+                  onClick={() => changeMonth(-1)}
+                  aria-label={t("previousMonth")}
+                >
+                  ‹
+                </button>
+                <strong className="calendar-month">{calendarView.monthLabel}</strong>
+                <button
+                  className="btn btn-secondary calendar-nav-button"
+                  type="button"
+                  onClick={() => changeMonth(1)}
+                  aria-label={t("nextMonth")}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+
+            <div className="calendar-grid" aria-busy={calendarLoading}>
+              {calendarView.weekdays.map((weekday) => (
+                <div className="calendar-weekday" key={weekday}>
+                  {weekday}
+                </div>
+              ))}
+              {Array.from({ length: calendarView.leadingDays }, (_, index) => (
+                <div className="calendar-day calendar-day-empty" key={`empty-${index}`} />
+              ))}
+              {calendarView.days.map((date) => {
+                const dateKey = formatCalendarDate(date, "yyyy-MM-dd");
+                const day = calendar?.days[dateKey];
+                const isToday =
+                  dateKey === formatCalendarDate(new Date(), "yyyy-MM-dd");
+                return (
+                  <div
+                    className={`calendar-day${isToday ? " calendar-day-today" : ""}`}
+                    key={dateKey}
+                  >
+                    <span className="calendar-date">{date.getDate()}</span>
+                    {calendarLoading ? (
+                      <span className="calendar-loading">…</span>
+                    ) : day ? (
+                      <div className="calendar-day-sales">
+                        <strong title={formatMoney(day.salesTotal)}>
+                          {formatCalendarMoney(day.salesTotal)}
+                        </strong>
+                        <span>
+                          {day.salesCount} {t(day.salesCount === 1 ? "transaction" : "transactions")}
+                        </span>
+                        {day.returnsTotal > 0 && (
+                          <span className="calendar-returns">
+                            -{formatCalendarMoney(day.returnsTotal)} {t("returns").toLowerCase()}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="calendar-no-sales">{t("noSales")}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </>
       )}
 

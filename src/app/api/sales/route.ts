@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
+import { addMonths, format, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@/lib/constants";
 import { sendAdminNotification } from "@/lib/notifications";
@@ -40,6 +40,14 @@ export async function GET(request: NextRequest) {
     }
     await assertStoreAccess(user, storeId);
     const reportStoreId: string = storeId;
+    const requestedMonth = request.nextUrl.searchParams.get("month");
+    const monthMatch = requestedMonth?.match(/^(\d{4})-(\d{2})$/);
+    const requestedMonthNumber = monthMatch ? Number(monthMatch[2]) : 0;
+    const monthDate = monthMatch && requestedMonthNumber >= 1 && requestedMonthNumber <= 12
+      ? new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1)
+      : startOfMonth(new Date());
+    const calendarStart = startOfMonth(monthDate);
+    const calendarEnd = addMonths(calendarStart, 1);
 
     const sales = await prisma.sale.findMany({
       where: { storeId },
@@ -96,10 +104,75 @@ export async function GET(request: NextRequest) {
       reportSince(startOfMonth(now)),
     ]);
 
+    const calendarSales = await prisma.sale.findMany({
+      where: {
+        storeId: reportStoreId,
+        OR: [
+          { createdAt: { gte: calendarStart, lt: calendarEnd } },
+          {
+            status: "RETURNED",
+            returnedAt: { gte: calendarStart, lt: calendarEnd },
+          },
+        ],
+      },
+      select: {
+        total: true,
+        createdAt: true,
+        status: true,
+        returnedAt: true,
+      },
+    });
+
+    const calendarDays: Record<string, {
+      salesTotal: number;
+      returnsTotal: number;
+      netTotal: number;
+      salesCount: number;
+      returnsCount: number;
+    }> = {};
+
+    function getCalendarDay(date: Date) {
+      const key = format(date, "yyyy-MM-dd");
+      calendarDays[key] ??= {
+        salesTotal: 0,
+        returnsTotal: 0,
+        netTotal: 0,
+        salesCount: 0,
+        returnsCount: 0,
+      };
+      return calendarDays[key];
+    }
+
+    for (const sale of calendarSales) {
+      if (sale.createdAt >= calendarStart && sale.createdAt < calendarEnd) {
+        const day = getCalendarDay(sale.createdAt);
+        day.salesTotal += sale.total;
+        day.salesCount += 1;
+      }
+      if (
+        sale.status === "RETURNED" &&
+        sale.returnedAt &&
+        sale.returnedAt >= calendarStart &&
+        sale.returnedAt < calendarEnd
+      ) {
+        const day = getCalendarDay(sale.returnedAt);
+        day.returnsTotal += sale.total;
+        day.returnsCount += 1;
+      }
+    }
+
+    for (const day of Object.values(calendarDays)) {
+      day.netTotal = day.salesTotal - day.returnsTotal;
+    }
+
     return NextResponse.json({
       sales,
       storeId,
       reports: { allTime, daily, weekly, monthly },
+      calendar: {
+        month: format(calendarStart, "yyyy-MM"),
+        days: calendarDays,
+      },
     });
   } catch (error) {
     if (error instanceof AuthError) {
