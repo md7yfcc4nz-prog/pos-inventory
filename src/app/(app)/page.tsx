@@ -101,20 +101,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {(data.expired.length > 0 || data.lowStock.length > 0) && (
-        <div className="split-2" style={{ marginBottom: "1.2rem" }}>
-          {data.expired.length > 0 && (
-            <div className="alert alert-danger">
-              <strong>{t("expiredMedicine")}:</strong>{" "}
-              {data.expired.map((i) => i.name).join(", ")}
-            </div>
-          )}
-          {data.lowStock.length > 0 && (
-            <div className="alert alert-warn">
-              <strong>{t("lowStock")}:</strong>{" "}
-              {data.lowStock.map((i) => `${i.name} (${i.quantity})`).join(", ")}
-            </div>
-          )}
+      {data.expired.length > 0 && (
+        <div className="alert alert-danger" style={{ marginBottom: "1.2rem" }}>
+          <strong>{t("expiredMedicine")}:</strong>{" "}
+          {data.expired.map((i) => i.name).join(", ")}
         </div>
       )}
 
