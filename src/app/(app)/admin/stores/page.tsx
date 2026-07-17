@@ -72,6 +72,28 @@ export default function AdminStoresPage() {
     window.location.reload();
   }
 
+  async function editStore(store: Store) {
+    const nextName = prompt(t("name"), store.name);
+    if (nextName === null || !nextName.trim()) return;
+    const nextAddress = prompt(t("address"), store.address || "");
+    if (nextAddress === null) return;
+    setError("");
+    setMessage("");
+    const res = await fetch(`/api/stores/${store.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: nextName, address: nextAddress }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to update store");
+      return;
+    }
+    setMessage("Store updated");
+    await load();
+    window.location.reload();
+  }
+
   return (
     <div>
       <h1 className="page-title">{t("stores")}</h1>
@@ -113,13 +135,22 @@ export default function AdminStoresPage() {
                   <td data-label={t("name")}>{store.name}</td>
                   <td data-label={t("address")}>{store.address || "—"}</td>
                   <td data-label="">
-                    <button
-                      className="btn btn-danger"
-                      onClick={() => removeStore(store)}
-                      type="button"
-                    >
-                      {t("delete")}
-                    </button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => editStore(store)}
+                        type="button"
+                      >
+                        {t("edit")}
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => removeStore(store)}
+                        type="button"
+                      >
+                        {t("delete")}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

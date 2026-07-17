@@ -9,8 +9,8 @@ function LoginForm() {
   const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("admin@store.local");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 

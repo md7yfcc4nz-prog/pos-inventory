@@ -22,6 +22,14 @@ type Sale = {
   }>;
 };
 
+type Report = {
+  salesTotal: number;
+  returnsTotal: number;
+  netTotal: number;
+  salesCount: number;
+  returnsCount: number;
+};
+
 export default function SalesPage() {
   const { t } = useLanguage();
   const [sales, setSales] = useState<Sale[]>([]);
@@ -30,6 +38,12 @@ export default function SalesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "RETURNED">("ALL");
   const [busyId, setBusyId] = useState("");
+  const [reports, setReports] = useState<{
+    allTime: Report;
+    daily: Report;
+    weekly: Report;
+    monthly: Report;
+  } | null>(null);
 
   useEffect(() => {
     Promise.all([fetch("/api/sales"), fetch("/api/auth/me")])
@@ -38,6 +52,7 @@ export default function SalesPage() {
         const meData = await meRes.json();
         if (!salesRes.ok) throw new Error(salesData.error || "Failed to load sales");
         setSales(salesData.sales);
+        setReports(salesData.reports);
         setIsAdmin(meData.user?.role === "ADMIN");
       })
       .catch((err) => setError(err.message))
@@ -70,6 +85,12 @@ export default function SalesPage() {
     setSales((current) =>
       current.map((item) => (item.id === sale.id ? data.sale : item))
     );
+    const refreshed = await fetch("/api/sales");
+    if (refreshed.ok) {
+      const refreshedData = await refreshed.json();
+      setSales(refreshedData.sales);
+      setReports(refreshedData.reports);
+    }
   }
 
   return (
@@ -78,6 +99,45 @@ export default function SalesPage() {
       <p className="page-sub">{t("completedSalesReturns")}</p>
 
       {error && <div className="alert alert-danger">{error}</div>}
+
+      {reports && (
+        <>
+          <div className="metric-grid sales-total-grid" style={{ marginBottom: "1rem" }}>
+            <div className="metric-card">
+              <div className="metric-label">{t("totalSales")}</div>
+              <div className="metric-value">{formatMoney(reports.allTime.salesTotal)}</div>
+              <div className="report-count">{reports.allTime.salesCount} {t("transactions")}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">{t("totalReturns")}</div>
+              <div className="metric-value" style={{ color: "var(--warn)" }}>
+                {formatMoney(reports.allTime.returnsTotal)}
+              </div>
+              <div className="report-count">{reports.allTime.returnsCount} {t("transactions")}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">{t("netSales")}</div>
+              <div className="metric-value">{formatMoney(reports.allTime.netTotal)}</div>
+            </div>
+          </div>
+
+          <h2 className="section-title">{t("salesReport")}</h2>
+          <div className="report-grid">
+            {([
+              ["today", reports.daily],
+              ["thisWeek", reports.weekly],
+              ["thisMonth", reports.monthly],
+            ] as Array<[string, Report]>).map(([label, report]) => (
+              <div className="card report-card" key={label}>
+                <strong>{t(label)}</strong>
+                <div><span>{t("totalSales")}</span><b>{formatMoney(report.salesTotal)}</b></div>
+                <div><span>{t("totalReturns")}</span><b>{formatMoney(report.returnsTotal)}</b></div>
+                <div><span>{t("netSales")}</span><b>{formatMoney(report.netTotal)}</b></div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="filters">
         {(["ALL", "COMPLETED", "RETURNED"] as const).map((value) => (

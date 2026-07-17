@@ -19,6 +19,7 @@ export async function GET() {
           totalSkus: 0,
           totalUnits: 0,
           inventoryValue: 0,
+          retailValue: 0,
           lowStockCount: 0,
           expiredCount: 0,
           nearExpiryCount: 0,
@@ -33,13 +34,14 @@ export async function GET() {
     await assertStoreAccess(user, storeId);
 
     const stockRows = await prisma.storeStock.findMany({
-      where: { storeId },
+      where: { storeId, product: { archivedAt: null } },
       include: { product: true },
       orderBy: { product: { createdAt: "desc" } },
     });
 
     let totalUnits = 0;
     let inventoryValue = 0;
+    let retailValue = 0;
     const lowStock = [];
     const expired = [];
     const nearExpiry = [];
@@ -47,6 +49,7 @@ export async function GET() {
     for (const row of stockRows) {
       totalUnits += row.quantity;
       inventoryValue += row.quantity * row.product.cost;
+      retailValue += row.quantity * row.product.price;
 
       const item = {
         id: row.product.id,
@@ -70,6 +73,7 @@ export async function GET() {
     }
 
     const recent = await prisma.product.findMany({
+      where: { archivedAt: null },
       take: 6,
       orderBy: { createdAt: "desc" },
       include: {
@@ -83,6 +87,7 @@ export async function GET() {
         totalSkus: stockRows.length,
         totalUnits,
         inventoryValue,
+        retailValue,
         lowStockCount: lowStock.length,
         expiredCount: expired.length,
         nearExpiryCount: nearExpiry.length,

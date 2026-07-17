@@ -10,6 +10,7 @@ type DashboardData = {
     totalSkus: number;
     totalUnits: number;
     inventoryValue: number;
+    retailValue: number;
     lowStockCount: number;
     expiredCount: number;
     nearExpiryCount: number;
@@ -74,14 +75,19 @@ export default function DashboardPage() {
 
       <div className="metric-grid" style={{ marginBottom: "1.2rem" }}>
         <div className="metric-card">
-          <div className="metric-label">{t("totalInventory")}</div>
-          <div className="metric-value">{metrics.totalSkus}</div>
-          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{metrics.totalUnits} {t("unitsOnHand")}</div>
+          <div className="metric-label">{t("unitsOnHandLabel")}</div>
+          <div className="metric-value">{metrics.totalUnits}</div>
+          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{metrics.totalSkus} {t("productsCount")}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t("inventoryValue")}</div>
           <div className="metric-value">{formatMoney(metrics.inventoryValue)}</div>
           <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{t("costTimesQuantity")}</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">{t("retailValue")}</div>
+          <div className="metric-value">{formatMoney(metrics.retailValue)}</div>
+          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{t("retailValueNote")}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">{t("lowStockAlerts")}</div>

@@ -230,6 +230,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div style={{ fontSize: "0.85rem", opacity: 0.75 }}>{t("signedInAs")}</div>
           <div style={{ fontWeight: 700 }}>{user?.name}</div>
           <div style={{ fontSize: "0.85rem", opacity: 0.75 }}>{user?.role}</div>
+          <button className="btn sidebar-signout" onClick={logout} type="button">
+            {t("signOut")}
+          </button>
         </div>
       </aside>
 

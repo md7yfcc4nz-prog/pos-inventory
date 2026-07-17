@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@/lib/constants";
 import { sendAdminNotification } from "@/lib/notifications";
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ sales: [] });
     }
     await assertStoreAccess(user, storeId);
+    const reportStoreId: string = storeId;
 
     const sales = await prisma.sale.findMany({
       where: { storeId },
@@ -52,7 +55,52 @@ export async function GET(request: NextRequest) {
       take: 100,
     });
 
-    return NextResponse.json({ sales, storeId });
+    async function reportSince(start?: Date) {
+      const grossWhere: Prisma.SaleWhereInput = {
+        storeId: reportStoreId,
+        ...(start ? { createdAt: { gte: start } } : {}),
+      };
+      const returnsWhere: Prisma.SaleWhereInput = {
+        storeId: reportStoreId,
+        status: "RETURNED",
+        returnedAt: start ? { gte: start } : { not: null },
+      };
+      const [gross, returns, salesCount, returnsCount] = await Promise.all([
+        prisma.sale.aggregate({
+          where: grossWhere,
+          _sum: { total: true },
+        }),
+        prisma.sale.aggregate({
+          where: returnsWhere,
+          _sum: { total: true },
+        }),
+        prisma.sale.count({ where: grossWhere }),
+        prisma.sale.count({ where: returnsWhere }),
+      ]);
+      const salesTotal = gross._sum?.total ?? 0;
+      const returnsTotal = returns._sum?.total ?? 0;
+      return {
+        salesTotal,
+        returnsTotal,
+        netTotal: salesTotal - returnsTotal,
+        salesCount,
+        returnsCount,
+      };
+    }
+
+    const now = new Date();
+    const [allTime, daily, weekly, monthly] = await Promise.all([
+      reportSince(),
+      reportSince(startOfDay(now)),
+      reportSince(startOfWeek(now, { weekStartsOn: 1 })),
+      reportSince(startOfMonth(now)),
+    ]);
+
+    return NextResponse.json({
+      sales,
+      storeId,
+      reports: { allTime, daily, weekly, monthly },
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
