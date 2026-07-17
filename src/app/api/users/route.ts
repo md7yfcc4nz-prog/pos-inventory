@@ -49,10 +49,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid user data" }, { status: 400 });
     }
 
+    if (parsed.data.role === Role.STAFF && parsed.data.storeIds.length !== 1) {
+      return NextResponse.json(
+        { error: "Staff must be assigned to exactly one store" },
+        { status: 400 }
+      );
+    }
+
     const email = parsed.data.email.toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+    }
+
+    const assignedStoreIds =
+      parsed.data.role === Role.STAFF ? parsed.data.storeIds.slice(0, 1) : [];
+    if (assignedStoreIds.length === 1) {
+      const store = await prisma.store.findFirst({
+        where: { id: assignedStoreIds[0], archivedAt: null },
+      });
+      if (!store) {
+        return NextResponse.json({ error: "Store not found" }, { status: 400 });
+      }
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
@@ -63,7 +81,7 @@ export async function POST(request: NextRequest) {
         passwordHash,
         role: parsed.data.role,
         stores: {
-          create: parsed.data.storeIds.map((storeId) => ({ storeId })),
+          create: assignedStoreIds.map((storeId) => ({ storeId })),
         },
       },
       include: {

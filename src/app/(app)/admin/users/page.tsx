@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Store = { id: string; name: string };
 type UserRow = {
@@ -12,13 +13,14 @@ type UserRow = {
 };
 
 export default function AdminUsersPage() {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("password123");
   const [role, setRole] = useState<"ADMIN" | "STAFF">("STAFF");
-  const [storeIds, setStoreIds] = useState<string[]>([]);
+  const [storeId, setStoreId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -38,10 +40,6 @@ export default function AdminUsersPage() {
     load();
   }, []);
 
-  function toggleStore(id: string) {
-    setStoreIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
-  }
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -49,7 +47,13 @@ export default function AdminUsersPage() {
     const res = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role, storeIds }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        role,
+        storeIds: role === "STAFF" && storeId ? [storeId] : [],
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -60,7 +64,7 @@ export default function AdminUsersPage() {
     setEmail("");
     setPassword("password123");
     setRole("STAFF");
-    setStoreIds([]);
+    setStoreId("");
     setMessage("User created");
     load();
   }
@@ -78,7 +82,7 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="page-title">Users</h1>
+      <h1 className="page-title">{t("users")}</h1>
       <p className="page-sub">Create admin and staff accounts and assign store access.</p>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div>}
@@ -90,51 +94,54 @@ export default function AdminUsersPage() {
 
       <div className="split-2">
         <form className="card" style={{ padding: "1.2rem" }} onSubmit={onSubmit}>
-          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>Add user</h2>
+          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>{t("addUser")}</h2>
           <div className="field" style={{ marginBottom: "0.8rem" }}>
-            <label className="label">Name</label>
+            <label className="label">{t("name")}</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="field" style={{ marginBottom: "0.8rem" }}>
-            <label className="label">Email</label>
+            <label className="label">{t("email")}</label>
             <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="field" style={{ marginBottom: "0.8rem" }}>
-            <label className="label">Password</label>
+            <label className="label">{t("password")}</label>
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <div className="field" style={{ marginBottom: "0.8rem" }}>
-            <label className="label">Role</label>
+            <label className="label">{t("role")}</label>
             <select className="select" value={role} onChange={(e) => setRole(e.target.value as "ADMIN" | "STAFF")}>
-              <option value="STAFF">Staff</option>
-              <option value="ADMIN">Admin</option>
+              <option value="STAFF">{t("staff")}</option>
+              <option value="ADMIN">{t("admin")}</option>
             </select>
           </div>
-          <div className="field" style={{ marginBottom: "1rem" }}>
-            <label className="label">Assigned stores</label>
-            <div style={{ display: "grid", gap: 6 }}>
-              {stores.map((store) => (
-                <label key={store.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={storeIds.includes(store.id)}
-                    onChange={() => toggleStore(store.id)}
-                  />
-                  {store.name}
-                </label>
-              ))}
+          {role === "STAFF" && (
+            <div className="field" style={{ marginBottom: "1rem" }}>
+              <label className="label">{t("assignedStore")}</label>
+              <select
+                className="select"
+                value={storeId}
+                onChange={(e) => setStoreId(e.target.value)}
+                required
+              >
+                <option value="">{t("chooseStore")}</option>
+                {stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-          <button className="btn btn-primary">Create user</button>
+          )}
+          <button className="btn btn-primary">{t("createUser")}</button>
         </form>
 
         <div className="card table-wrap">
           <table className="data">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Stores</th>
+                <th>{t("name")}</th>
+                <th>{t("role")}</th>
+                <th>{t("stores")}</th>
                 <th></th>
               </tr>
             </thead>
@@ -151,7 +158,7 @@ export default function AdminUsersPage() {
                   <td>{user.stores.map((s) => s.name).join(", ") || "—"}</td>
                   <td>
                     <button className="btn btn-danger" onClick={() => removeUser(user.id)}>
-                      Delete
+                      {t("delete")}
                     </button>
                   </td>
                 </tr>

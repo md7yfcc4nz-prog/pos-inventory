@@ -96,3 +96,15 @@ model SaleItem {
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
 }
+
+model Notification {
+  id        String    @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  storeId   String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([readAt, createdAt])
+}

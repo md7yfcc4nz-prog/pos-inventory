@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type FormState = {
   name: string;
@@ -30,6 +31,7 @@ const empty: FormState = {
 };
 
 export default function ProductFormPage() {
+  const { t } = useLanguage();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const isNew = params.id === "new";
@@ -118,64 +120,64 @@ export default function ProductFormPage() {
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <h1 className="page-title">{isNew ? "Add product" : "Edit product"}</h1>
-      <p className="page-sub">Include barcode, supplier, stock level, and optional image.</p>
+      <h1 className="page-title">{isNew ? t("addProduct") : t("editProduct")}</h1>
+      <p className="page-sub">{t("productFormSubtitle")}</p>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div>}
 
       <form className="card" style={{ padding: "1.2rem" }} onSubmit={onSubmit}>
         <div className="split-2" style={{ marginBottom: "1rem" }}>
           <div className="field">
-            <label className="label">Name</label>
+            <label className="label">{t("name")}</label>
             <input className="input" value={form.name} onChange={(e) => update("name", e.target.value)} required />
           </div>
           <div className="field">
-            <label className="label">Category</label>
+            <label className="label">{t("category")}</label>
             <select
               className="select"
               value={form.category}
               onChange={(e) => update("category", e.target.value as FormState["category"])}
             >
-              <option value="DRINKS">Drinks</option>
-              <option value="MEDICINE">Medicine</option>
-              <option value="OTHER">Other</option>
+              <option value="DRINKS">{t("drinks")}</option>
+              <option value="MEDICINE">{t("medicine")}</option>
+              <option value="OTHER">{t("other")}</option>
             </select>
           </div>
         </div>
 
         <div className="split-2" style={{ marginBottom: "1rem" }}>
           <div className="field">
-            <label className="label">Barcode</label>
+            <label className="label">{t("barcode")}</label>
             <input className="input" value={form.barcode} onChange={(e) => update("barcode", e.target.value)} />
           </div>
           <div className="field">
-            <label className="label">Supplier</label>
+            <label className="label">{t("supplier")}</label>
             <input className="input" value={form.supplier} onChange={(e) => update("supplier", e.target.value)} />
           </div>
         </div>
 
         <div className="split-3" style={{ marginBottom: "1rem" }}>
           <div className="field">
-            <label className="label">Cost (FCFA)</label>
+            <label className="label">{t("costFcfa")}</label>
             <input className="input" type="number" step="0.01" min="0" value={form.cost} onChange={(e) => update("cost", e.target.value)} required />
           </div>
           <div className="field">
-            <label className="label">Sell price (FCFA)</label>
+            <label className="label">{t("sellPriceFcfa")}</label>
             <input className="input" type="number" step="0.01" min="0" value={form.price} onChange={(e) => update("price", e.target.value)} required />
           </div>
           <div className="field">
-            <label className="label">Quantity (this store)</label>
+            <label className="label">{t("quantity")} ({t("thisStore")})</label>
             <input className="input" type="number" min="0" value={form.quantity} onChange={(e) => update("quantity", e.target.value)} required />
           </div>
         </div>
 
         <div className="split-2" style={{ marginBottom: "1rem" }}>
           <div className="field">
-            <label className="label">Low stock threshold</label>
+            <label className="label">{t("lowStockThreshold")}</label>
             <input className="input" type="number" min="0" value={form.lowStockThreshold} onChange={(e) => update("lowStockThreshold", e.target.value)} required />
           </div>
           <div className="field">
-            <label className="label">Expiry date {form.category === "MEDICINE" ? "(required)" : "(optional)"}</label>
+            <label className="label">{t("expiryDate")} ({form.category === "MEDICINE" ? t("required") : t("optional")})</label>
             <input
               className="input"
               type="date"
@@ -187,7 +189,7 @@ export default function ProductFormPage() {
         </div>
 
         <div className="field" style={{ marginBottom: "1.2rem" }}>
-          <label className="label">Product image</label>
+          <label className="label">{t("productImage")}</label>
           <input
             className="input"
             type="file"
@@ -197,7 +199,7 @@ export default function ProductFormPage() {
               if (file) uploadImage(file);
             }}
           />
-          {uploading && <div style={{ color: "var(--ink-muted)", marginTop: 6 }}>Uploading…</div>}
+          {uploading && <div style={{ color: "var(--ink-muted)", marginTop: 6 }}>{t("uploading")}</div>}
           {form.imagePath && (
             <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 12 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -209,10 +211,10 @@ export default function ProductFormPage() {
 
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-primary" disabled={saving}>
-            {saving ? "Saving…" : isNew ? "Create product" : "Save changes"}
+            {saving ? t("saving") : isNew ? t("createProduct") : t("saveChanges")}
           </button>
           <button className="btn btn-secondary" type="button" onClick={() => router.push("/inventory")}>
-            Cancel
+            {t("cancel")}
           </button>
         </div>
       </form>

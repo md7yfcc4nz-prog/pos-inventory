@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 import { formatDate, formatMoney } from "@/lib/utils";
 
 type Sale = {
@@ -22,6 +23,7 @@ type Sale = {
 };
 
 export default function SalesPage() {
+  const { t } = useLanguage();
   const [sales, setSales] = useState<Sale[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -72,8 +74,8 @@ export default function SalesPage() {
 
   return (
     <div>
-      <h1 className="page-title">Sales history</h1>
-      <p className="page-sub">Completed sales and returns for the active store.</p>
+      <h1 className="page-title">{t("salesHistory")}</h1>
+      <p className="page-sub">{t("completedSalesReturns")}</p>
 
       {error && <div className="alert alert-danger">{error}</div>}
 
@@ -85,7 +87,7 @@ export default function SalesPage() {
             onClick={() => setFilter(value)}
             type="button"
           >
-            {value === "ALL" ? "All" : value === "COMPLETED" ? "Sales" : "Returns"}
+            {value === "ALL" ? t("all") : value === "COMPLETED" ? t("sales") : t("returns")}
           </button>
         ))}
       </div>
@@ -94,12 +96,12 @@ export default function SalesPage() {
         <table className="data">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Cashier</th>
-              <th>Items</th>
-              <th>Payment</th>
-              <th>Status</th>
-              <th>Total</th>
+              <th>{t("date")}</th>
+              <th>{t("cashier")}</th>
+              <th>{t("items")}</th>
+              <th>{t("payment")}</th>
+              <th>{t("status")}</th>
+              <th>{t("total")}</th>
               {isAdmin && <th></th>}
             </tr>
           </thead>
@@ -107,7 +109,7 @@ export default function SalesPage() {
             {loading ? (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="empty">
-                  Loading…
+                  {t("loading")}
                 </td>
               </tr>
             ) : visibleSales.length === 0 ? (
@@ -130,7 +132,7 @@ export default function SalesPage() {
                   <td>
                     {sale.status === "RETURNED" ? (
                       <div>
-                        <span className="badge badge-warn">Returned</span>
+                        <span className="badge badge-warn">{t("returned")}</span>
                         {sale.returnReason && (
                           <div style={{ marginTop: 5, color: "var(--ink-muted)", fontSize: "0.85rem" }}>
                             {sale.returnReason}
@@ -138,7 +140,7 @@ export default function SalesPage() {
                         )}
                       </div>
                     ) : (
-                      <span className="badge badge-ok">Completed</span>
+                      <span className="badge badge-ok">{t("completed")}</span>
                     )}
                   </td>
                   <td>
@@ -153,7 +155,7 @@ export default function SalesPage() {
                           onClick={() => returnSale(sale)}
                           type="button"
                         >
-                          {busyId === sale.id ? "Returning…" : "Return sale"}
+                          {busyId === sale.id ? `${t("returnSale")}…` : t("returnSale")}
                         </button>
                       )}
                     </td>

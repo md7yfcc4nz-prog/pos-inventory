@@ -161,9 +161,8 @@ export async function POST(request: NextRequest) {
       where: { id: storeId },
       select: { name: true },
     });
-    await sendAdminNotification({
-      subject: `Kasuwa product added — ${product.name}`,
-      text: [
+    const subject = `Kasuwa product added — ${product.name}`;
+    const notificationText = [
         "A product was added to Kasuwa inventory.",
         `Product: ${product.name}`,
         `Store: ${store?.name || "Unknown store"}`,
@@ -171,8 +170,18 @@ export async function POST(request: NextRequest) {
         `Cost: ${formatMoney(product.cost)}`,
         `Sell price: ${formatMoney(product.price)}`,
         `Added by: ${user.name}`,
-      ].join("\n"),
-    });
+      ].join("\n");
+    await Promise.allSettled([
+      prisma.notification.create({
+        data: {
+          type: "PRODUCT",
+          title: "Product added",
+          message: `${product.name} ×${data.quantity} added to ${store?.name || "inventory"}`,
+          storeId,
+        },
+      }),
+      sendAdminNotification({ subject, text: notificationText }),
+    ]);
 
     return NextResponse.json({ product }, { status: 201 });
   } catch (error) {

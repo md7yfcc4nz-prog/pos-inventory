@@ -23,6 +23,22 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     const data = parsed.data;
+    const existing = await prisma.user.findUnique({
+      where: { id },
+      include: { stores: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    const finalRole = data.role || existing.role;
+    const finalStoreIds = data.storeIds ?? existing.stores.map((store) => store.storeId);
+    if (finalRole === "STAFF" && finalStoreIds.length !== 1) {
+      return NextResponse.json(
+        { error: "Staff must be assigned to exactly one store" },
+        { status: 400 }
+      );
+    }
+
     const passwordHash = data.password ? await hashPassword(data.password) : undefined;
 
     const user = await prisma.$transaction(async (tx) => {
@@ -35,11 +51,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
         },
       });
 
-      if (data.storeIds) {
+      if (data.storeIds || data.role === "ADMIN") {
         await tx.userStore.deleteMany({ where: { userId: id } });
-        if (data.storeIds.length > 0) {
+        if (finalRole === "STAFF" && finalStoreIds.length > 0) {
           await tx.userStore.createMany({
-            data: data.storeIds.map((storeId) => ({ userId: id, storeId })),
+            data: finalStoreIds.map((storeId) => ({ userId: id, storeId })),
           });
         }
       }

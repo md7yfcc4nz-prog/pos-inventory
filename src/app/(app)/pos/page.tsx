@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 import { formatMoney } from "@/lib/utils";
 
 type Product = {
@@ -21,6 +22,7 @@ type CartItem = {
 };
 
 export default function PosPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -133,8 +135,8 @@ export default function PosPage() {
 
   return (
     <div>
-      <h1 className="page-title">Point of Sale</h1>
-      <p className="page-sub">Scan or search products, build a cart, and complete the sale.</p>
+      <h1 className="page-title">{t("pos")}</h1>
+      <p className="page-sub">{t("posSubtitle")}</p>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div>}
       {message && <div className="alert" style={{ marginBottom: "1rem", background: "var(--brand-soft)", border: "1px solid #b7d8c8", color: "var(--brand)" }}>{message}</div>}
@@ -142,7 +144,7 @@ export default function PosPage() {
       <div className="pos-layout">
         <section className="card" style={{ padding: "1rem" }}>
           <div className="field" style={{ marginBottom: "1rem" }}>
-            <label className="label">Search / barcode</label>
+            <label className="label">{t("searchBarcode")}</label>
             <input
               className="input"
               value={query}
@@ -150,7 +152,7 @@ export default function PosPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") onBarcodeEnter();
               }}
-              placeholder="Type name or scan barcode, then Enter"
+              placeholder={t("searchPlaceholder")}
               autoFocus
             />
           </div>
@@ -188,7 +190,7 @@ export default function PosPage() {
                 )}
                 <div style={{ fontWeight: 700 }}>{p.name}</div>
                 <div style={{ color: "var(--ink-muted)", fontSize: "0.9rem" }}>
-                  {formatMoney(p.price)} · {p.quantity} left
+                  {formatMoney(p.price)} · {p.quantity} {t("left")}
                 </div>
               </button>
             ))}
@@ -196,17 +198,17 @@ export default function PosPage() {
         </section>
 
         <section className="card" style={{ padding: "1rem", position: "sticky", top: 90 }}>
-          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>Cart</h2>
+          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>{t("cart")}</h2>
           {cart.length === 0 ? (
-            <div className="empty">Cart is empty</div>
+            <div className="empty">{t("cartEmpty")}</div>
           ) : (
             <div className="table-wrap">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Total</th>
+                    <th>{t("item")}</th>
+                    <th>{t("quantity")}</th>
+                    <th>{t("total")}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -233,7 +235,7 @@ export default function PosPage() {
                       <td>{formatMoney(item.unitPrice * item.quantity)}</td>
                       <td>
                         <button className="btn btn-danger" type="button" onClick={() => removeItem(item.productId)}>
-                          Remove
+                          {t("remove")}
                         </button>
                       </td>
                     </tr>
@@ -245,24 +247,24 @@ export default function PosPage() {
 
           <div style={{ marginTop: "1rem", display: "grid", gap: "0.8rem" }}>
             <div className="field">
-              <label className="label">Payment method</label>
+              <label className="label">{t("paymentMethod")}</label>
               <select
                 className="select"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as "CASH" | "CARD")}
               >
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
+                <option value="CASH">{t("cash")}</option>
+                <option value="CARD">{t("card")}</option>
               </select>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ color: "var(--ink-muted)" }}>Subtotal</span>
+              <span style={{ color: "var(--ink-muted)" }}>{t("subtotal")}</span>
               <strong style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem" }}>
                 {formatMoney(subtotal)}
               </strong>
             </div>
             <button className="btn btn-accent" disabled={busy || cart.length === 0} onClick={checkout}>
-              {busy ? "Processing…" : "Complete sale"}
+              {busy ? t("processing") : t("completeSale")}
             </button>
           </div>
         </section>

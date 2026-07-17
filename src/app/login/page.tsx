@@ -3,8 +3,10 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 function LoginForm() {
+  const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("admin@store.local");
@@ -38,7 +40,7 @@ function LoginForm() {
             Kasuwa
           </div>
           <p className="page-sub" style={{ marginBottom: 0 }}>
-            Sign in to manage inventory and sales across your stores.
+            {t("loginSubtitle")}
           </p>
         </div>
 
@@ -46,7 +48,7 @@ function LoginForm() {
 
         <div className="field" style={{ marginBottom: "0.9rem" }}>
           <label className="label" htmlFor="email">
-            Email
+            {t("email")}
           </label>
           <input
             id="email"
@@ -60,7 +62,7 @@ function LoginForm() {
 
         <div className="field" style={{ marginBottom: "1.2rem" }}>
           <label className="label" htmlFor="password">
-            Password
+            {t("password")}
           </label>
           <input
             id="password"
@@ -73,12 +75,20 @@ function LoginForm() {
         </div>
 
         <button className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? t("signingIn") : t("signIn")}
         </button>
 
-        <p style={{ marginTop: "1rem", color: "var(--ink-muted)", fontSize: "0.9rem" }}>
-          Demo: admin@store.local or staff@store.local / password123
-        </p>
+        <div style={{ marginTop: "1rem", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+          <span style={{ color: "var(--ink-muted)", fontSize: "0.9rem" }}>{t("language")}</span>
+          <select
+            className="select language-select"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as "en" | "fr")}
+          >
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+          </select>
+        </div>
       </form>
     </div>
   );

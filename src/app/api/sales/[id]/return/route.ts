@@ -70,6 +70,15 @@ export async function POST(request: NextRequest, { params }: Params) {
       });
     });
 
+    await prisma.notification.create({
+      data: {
+        type: "RETURN",
+        title: "Sale returned",
+        message: `${admin.name} returned a sale worth ${sale.total} FCFA`,
+        storeId: sale.storeId,
+      },
+    }).catch((error) => console.error("Failed to create return notification", error));
+
     return NextResponse.json({ sale });
   } catch (error) {
     if (error instanceof AuthError) {

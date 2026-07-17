@@ -8,6 +8,7 @@ const PaymentMethod = { CASH: "CASH", CARD: "CARD" } as const;
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.notification.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.storeStock.deleteMany();

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Store = {
   id: string;
@@ -9,6 +10,7 @@ type Store = {
 };
 
 export default function AdminStoresPage() {
+  const { t } = useLanguage();
   const [stores, setStores] = useState<Store[]>([]);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -72,7 +74,7 @@ export default function AdminStoresPage() {
 
   return (
     <div>
-      <h1 className="page-title">Stores</h1>
+      <h1 className="page-title">{t("stores")}</h1>
       <p className="page-sub">Manage multiple store locations from one admin account.</p>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div>}
@@ -84,24 +86,24 @@ export default function AdminStoresPage() {
 
       <div className="split-2">
         <form className="card" style={{ padding: "1.2rem" }} onSubmit={onSubmit}>
-          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>Add store</h2>
+          <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>{t("addStore")}</h2>
           <div className="field" style={{ marginBottom: "0.9rem" }}>
-            <label className="label">Name</label>
+            <label className="label">{t("name")}</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="field" style={{ marginBottom: "1rem" }}>
-            <label className="label">Address</label>
+            <label className="label">{t("address")}</label>
             <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
           </div>
-          <button className="btn btn-primary">Create store</button>
+          <button className="btn btn-primary">{t("createStore")}</button>
         </form>
 
         <div className="card table-wrap">
           <table className="data">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Address</th>
+                <th>{t("name")}</th>
+                <th>{t("address")}</th>
                 <th></th>
               </tr>
             </thead>
@@ -116,7 +118,7 @@ export default function AdminStoresPage() {
                       onClick={() => removeStore(store)}
                       type="button"
                     >
-                      Delete
+                      {t("delete")}
                     </button>
                   </td>
                 </tr>

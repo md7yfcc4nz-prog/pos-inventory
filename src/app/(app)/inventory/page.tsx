@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { categoryLabel, cn, formatDate, formatMoney } from "@/lib/utils";
+import { useLanguage } from "@/components/LanguageProvider";
+import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 type Product = {
   id: string;
@@ -23,14 +24,15 @@ type Product = {
 };
 
 const FILTERS = [
-  { key: "", label: "All" },
-  { key: "drinks", label: "Drinks" },
-  { key: "medicine", label: "Medicine" },
-  { key: "low_stock", label: "Low stock" },
-  { key: "expired", label: "Expired" },
+  { key: "", labelKey: "all" },
+  { key: "drinks", labelKey: "drinks" },
+  { key: "medicine", labelKey: "medicine" },
+  { key: "low_stock", labelKey: "lowStock" },
+  { key: "expired", labelKey: "expired" },
 ];
 
 function InventoryInner() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -104,12 +106,12 @@ function InventoryInner() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
         <div>
-          <h1 className="page-title">Inventory</h1>
-          <p className="page-sub">Search, filter, and manage products for the active store.</p>
+          <h1 className="page-title">{t("inventory")}</h1>
+          <p className="page-sub">{t("inventorySubtitle")}</p>
         </div>
         {isAdmin && (
           <Link className="btn btn-primary" href="/inventory/new">
-            Add product
+            {t("addProduct")}
           </Link>
         )}
       </div>
@@ -122,7 +124,7 @@ function InventoryInner() {
             onClick={() => applyFilter(f.key)}
             type="button"
           >
-            {f.label}
+            {t(f.labelKey)}
           </button>
         ))}
       </div>
@@ -130,7 +132,7 @@ function InventoryInner() {
       <div className="card" style={{ padding: "1rem", marginBottom: "1rem" }}>
         <div className="split-3">
           <div className="field">
-            <label className="label">Search name or barcode</label>
+            <label className="label">{t("searchNameBarcode")}</label>
             <input
               className="input"
               value={q}
@@ -142,7 +144,7 @@ function InventoryInner() {
             />
           </div>
           <div className="field">
-            <label className="label">Supplier</label>
+            <label className="label">{t("supplier")}</label>
             <select
               className="select"
               value={supplier}
@@ -151,7 +153,7 @@ function InventoryInner() {
                 load({ supplier: e.target.value });
               }}
             >
-              <option value="">All suppliers</option>
+              <option value="">{t("allSuppliers")}</option>
               {suppliers.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -162,7 +164,7 @@ function InventoryInner() {
           <div className="field" style={{ justifyContent: "flex-end" }}>
             <label className="label">&nbsp;</label>
             <button className="btn btn-secondary" type="button" onClick={() => load()}>
-              Search
+              {t("search")}
             </button>
           </div>
         </div>
@@ -174,14 +176,14 @@ function InventoryInner() {
         <table className="data">
           <thead>
             <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Barcode</th>
-              <th>Supplier</th>
-              <th>Qty</th>
-              <th>Price</th>
-              <th>Expiry</th>
-              <th>Status</th>
+              <th>{t("product")}</th>
+              <th>{t("category")}</th>
+              <th>{t("barcode")}</th>
+              <th>{t("supplier")}</th>
+              <th>{t("quantity")}</th>
+              <th>{t("price")}</th>
+              <th>{t("expiry")}</th>
+              <th>{t("status")}</th>
               {isAdmin && <th></th>}
             </tr>
           </thead>
@@ -189,13 +191,13 @@ function InventoryInner() {
             {loading ? (
               <tr>
                 <td colSpan={isAdmin ? 9 : 8} className="empty">
-                  Loading…
+                  {t("loading")}
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
                 <td colSpan={isAdmin ? 9 : 8} className="empty">
-                  No products match your filters
+                  {t("noProducts")}
                 </td>
               </tr>
             ) : (
@@ -216,7 +218,7 @@ function InventoryInner() {
                       )}
                     </div>
                   </td>
-                  <td>{categoryLabel(p.category)}</td>
+                  <td>{t(p.category === "DRINKS" ? "drinks" : p.category === "MEDICINE" ? "medicine" : "other")}</td>
                   <td>{p.barcode || "—"}</td>
                   <td>{p.supplier || "—"}</td>
                   <td>{p.quantity}</td>
@@ -224,21 +226,21 @@ function InventoryInner() {
                   <td>{formatDate(p.expiryDate)}</td>
                   <td>
                     {p.expired ? (
-                      <span className="badge badge-danger">Expired</span>
+                      <span className="badge badge-danger">{t("expired")}</span>
                     ) : p.lowStock ? (
-                      <span className="badge badge-warn">Low stock</span>
+                      <span className="badge badge-warn">{t("lowStock")}</span>
                     ) : (
-                      <span className="badge badge-ok">OK</span>
+                      <span className="badge badge-ok">{t("ok")}</span>
                     )}
                   </td>
                   {isAdmin && (
                     <td>
                       <div style={{ display: "flex", gap: 8 }}>
                         <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
-                          Edit
+                          {t("edit")}
                         </Link>
                         <button className="btn btn-danger" onClick={() => removeProduct(p.id)}>
-                          Delete
+                          {t("delete")}
                         </button>
                       </div>
                     </td>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { categoryLabel, formatDate, formatMoney } from "@/lib/utils";
+import { useLanguage } from "@/components/LanguageProvider";
+import { formatDate, formatMoney } from "@/lib/utils";
 
 type DashboardData = {
   metrics: {
@@ -27,6 +28,7 @@ type DashboardData = {
 };
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
 
@@ -52,49 +54,49 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="page-title">Dashboard</h1>
-      <p className="page-sub">Store overview, stock health, and quick actions.</p>
+      <h1 className="page-title">{t("dashboard")}</h1>
+      <p className="page-sub">{t("dashboardSubtitle")}</p>
 
       <div className="quick-actions" style={{ marginBottom: "1.2rem" }}>
         <Link className="btn btn-accent" href="/pos">
-          New Sale
+          {t("newSale")}
         </Link>
         <Link className="btn btn-primary" href="/inventory/new">
-          Add Product
+          {t("addProduct")}
         </Link>
         <Link className="btn btn-secondary" href="/inventory?filter=low_stock">
-          Low Stock
+          {t("lowStock")}
         </Link>
         <Link className="btn btn-secondary" href="/inventory?filter=expired">
-          Expired
+          {t("expired")}
         </Link>
       </div>
 
       <div className="metric-grid" style={{ marginBottom: "1.2rem" }}>
         <div className="metric-card">
-          <div className="metric-label">Total inventory (SKUs)</div>
+          <div className="metric-label">{t("totalInventory")}</div>
           <div className="metric-value">{metrics.totalSkus}</div>
-          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{metrics.totalUnits} units on hand</div>
+          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{metrics.totalUnits} {t("unitsOnHand")}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">Inventory value</div>
+          <div className="metric-label">{t("inventoryValue")}</div>
           <div className="metric-value">{formatMoney(metrics.inventoryValue)}</div>
-          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>Cost × quantity</div>
+          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{t("costTimesQuantity")}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">Low stock alerts</div>
+          <div className="metric-label">{t("lowStockAlerts")}</div>
           <div className="metric-value" style={{ color: "var(--warn)" }}>
             {metrics.lowStockCount}
           </div>
-          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>At or below threshold</div>
+          <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>{t("atBelowThreshold")}</div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">Expired medicine</div>
+          <div className="metric-label">{t("expiredMedicine")}</div>
           <div className="metric-value" style={{ color: "var(--danger)" }}>
             {metrics.expiredCount}
           </div>
           <div style={{ color: "var(--ink-muted)", marginTop: 4 }}>
-            {metrics.nearExpiryCount} near expiry
+            {metrics.nearExpiryCount} {t("nearExpiry")}
           </div>
         </div>
       </div>
@@ -103,13 +105,13 @@ export default function DashboardPage() {
         <div className="split-2" style={{ marginBottom: "1.2rem" }}>
           {data.expired.length > 0 && (
             <div className="alert alert-danger">
-              <strong>Expired medicine:</strong>{" "}
+              <strong>{t("expiredMedicine")}:</strong>{" "}
               {data.expired.map((i) => i.name).join(", ")}
             </div>
           )}
           {data.lowStock.length > 0 && (
             <div className="alert alert-warn">
-              <strong>Low stock:</strong>{" "}
+              <strong>{t("lowStock")}:</strong>{" "}
               {data.lowStock.map((i) => `${i.name} (${i.quantity})`).join(", ")}
             </div>
           )}
@@ -119,16 +121,16 @@ export default function DashboardPage() {
       <div className="split-2">
         <section className="card">
           <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
-            <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>Recently added</h2>
+            <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("recentlyAdded")}</h2>
           </div>
           <div className="table-wrap">
             <table className="data">
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th>Category</th>
-                  <th>Qty</th>
-                  <th>Price</th>
+                  <th>{t("product")}</th>
+                  <th>{t("category")}</th>
+                  <th>{t("quantity")}</th>
+                  <th>{t("price")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -140,7 +142,7 @@ export default function DashboardPage() {
                         {formatDate(item.createdAt)}
                       </div>
                     </td>
-                    <td>{categoryLabel(item.category)}</td>
+                    <td>{t(item.category === "DRINKS" ? "drinks" : item.category === "MEDICINE" ? "medicine" : "other")}</td>
                     <td>{item.quantity}</td>
                     <td>{formatMoney(item.price)}</td>
                   </tr>
@@ -148,7 +150,7 @@ export default function DashboardPage() {
                 {data.recent.length === 0 && (
                   <tr>
                     <td colSpan={4} className="empty">
-                      No products yet
+                      {t("noProductsYet")}
                     </td>
                   </tr>
                 )}
@@ -159,15 +161,15 @@ export default function DashboardPage() {
 
         <section className="card">
           <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
-            <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>Expiry watch</h2>
+            <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("expiryWatch")}</h2>
           </div>
           <div className="table-wrap">
             <table className="data">
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th>Expiry</th>
-                  <th>Qty</th>
+                  <th>{t("product")}</th>
+                  <th>{t("expiry")}</th>
+                  <th>{t("quantity")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -187,7 +189,7 @@ export default function DashboardPage() {
                 {data.expired.length === 0 && data.nearExpiry.length === 0 && (
                   <tr>
                     <td colSpan={3} className="empty">
-                      No expiry alerts
+                      {t("noExpiryAlerts")}
                     </td>
                   </tr>
                 )}

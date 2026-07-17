@@ -143,9 +143,8 @@ export async function POST(request: NextRequest) {
     const itemSummary = sale.items
       .map((item) => `${item.product.name} ×${item.quantity}`)
       .join(", ");
-    await sendAdminNotification({
-      subject: `Kasuwa sale completed — ${formatMoney(sale.total)}`,
-      text: [
+    const subject = `Kasuwa sale completed — ${formatMoney(sale.total)}`;
+    const notificationText = [
         "A sale was completed in Kasuwa.",
         `Store: ${sale.store.name}`,
         `Cashier: ${sale.cashier.name}`,
@@ -153,8 +152,18 @@ export async function POST(request: NextRequest) {
         `Items: ${itemSummary}`,
         `Total: ${formatMoney(sale.total)}`,
         `Date: ${sale.createdAt.toISOString()}`,
-      ].join("\n"),
-    });
+      ].join("\n");
+    await Promise.allSettled([
+      prisma.notification.create({
+        data: {
+          type: "SALE",
+          title: "Sale completed",
+          message: `${sale.store.name}: ${formatMoney(sale.total)} — ${itemSummary}`,
+          storeId: sale.storeId,
+        },
+      }),
+      sendAdminNotification({ subject, text: notificationText }),
+    ]);
 
     return NextResponse.json({ sale }, { status: 201 });
   } catch (error) {
