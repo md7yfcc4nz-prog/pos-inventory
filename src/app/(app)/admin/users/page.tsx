@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const [storeId, setStoreId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [updatingId, setUpdatingId] = useState("");
 
   async function load() {
     const [usersRes, storesRes] = await Promise.all([fetch("/api/users"), fetch("/api/stores")]);
@@ -78,6 +79,26 @@ export default function AdminUsersPage() {
       return;
     }
     load();
+  }
+
+  async function assignStore(userId: string, nextStoreId: string) {
+    if (!nextStoreId) return;
+    setUpdatingId(userId);
+    setError("");
+    setMessage("");
+    const res = await fetch(`/api/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storeIds: [nextStoreId] }),
+    });
+    const data = await res.json();
+    setUpdatingId("");
+    if (!res.ok) {
+      setError(data.error || "Failed to assign store");
+      return;
+    }
+    setMessage(t("assignmentSaved"));
+    await load();
   }
 
   return (
@@ -155,7 +176,26 @@ export default function AdminUsersPage() {
                   <td>
                     <span className="badge badge-neutral">{user.role}</span>
                   </td>
-                  <td>{user.stores.map((s) => s.name).join(", ") || "—"}</td>
+                  <td>
+                    {user.role === "ADMIN" ? (
+                      t("allStores")
+                    ) : (
+                      <select
+                        className="select"
+                        value={user.stores[0]?.id || ""}
+                        disabled={updatingId === user.id}
+                        onChange={(e) => assignStore(user.id, e.target.value)}
+                        aria-label={t("assignedStore")}
+                      >
+                        <option value="">{t("chooseStore")}</option>
+                        {stores.map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
                   <td>
                     <button className="btn btn-danger" onClick={() => removeUser(user.id)}>
                       {t("delete")}

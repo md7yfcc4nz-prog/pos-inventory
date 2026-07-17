@@ -119,6 +119,8 @@ const translations: Record<Language, Record<string, string>> = {
     expiryWatch: "Expiry watch",
     noProductsYet: "No products yet",
     noExpiryAlerts: "No expiry alerts",
+    allStores: "All stores",
+    assignmentSaved: "Store assignment saved",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -234,6 +236,8 @@ const translations: Record<Language, Record<string, string>> = {
     expiryWatch: "Suivi des expirations",
     noProductsYet: "Aucun produit",
     noExpiryAlerts: "Aucune alerte d’expiration",
+    allStores: "Tous les magasins",
+    assignmentSaved: "Attribution du magasin enregistrée",
   },
 };
 
