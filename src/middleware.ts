@@ -5,6 +5,9 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname === "/login" ||
+    pathname === "/logo.png" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
     pathname.startsWith("/api/auth/login");
   const session = await getSessionFromRequest(request);
 
@@ -43,5 +46,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|uploads|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|uploads|favicon.ico|logo.png|manifest.webmanifest|sw.js).*)"],
 };
