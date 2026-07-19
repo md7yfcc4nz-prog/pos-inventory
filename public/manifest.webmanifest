@@ -1,6 +1,6 @@
 {
   "name": "Kasuwa Manager",
-  "short_name": "Kasuwa",
+  "short_name": "Kasuwa Manager",
   "description": "Multi-store point of sale and inventory management",
   "start_url": "/",
   "display": "standalone",

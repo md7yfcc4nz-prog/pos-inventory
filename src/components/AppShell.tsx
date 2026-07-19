@@ -243,6 +243,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button className="mobile-menu-btn" onClick={() => setNavOpen(true)} aria-label="Open menu">
             ☰
           </button>
+          <div className="mobile-brand" aria-hidden="true">
+            Kasuwa Manager
+          </div>
           <div className="store-welcome">
             <div className="welcome-text">
               {t("welcomeTo")} <strong>{activeStore?.name || t("activeStore")}</strong>

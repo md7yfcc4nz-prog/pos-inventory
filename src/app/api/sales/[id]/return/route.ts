@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AuthError, requireAdmin } from "@/lib/auth";
+import { sendAdminNotification } from "@/lib/notifications";
+import { formatMoney } from "@/lib/utils";
 import { sendAdminPush } from "@/lib/push";
 
 type Params = { params: Promise<{ id: string }> };
@@ -71,19 +73,33 @@ export async function POST(request: NextRequest, { params }: Params) {
       });
     });
 
-    await prisma.notification.create({
-      data: {
-        type: "RETURN",
+    const returnMessage = `${admin.name} returned a sale worth ${formatMoney(sale.total)}`;
+    await Promise.allSettled([
+      prisma.notification.create({
+        data: {
+          type: "RETURN",
+          title: "Sale returned",
+          message: returnMessage,
+          storeId: sale.storeId,
+        },
+      }),
+      sendAdminNotification({
+        subject: `Kasuwa Manager sale returned — ${formatMoney(sale.total)}`,
+        text: [
+          "A sale was returned in Kasuwa Manager.",
+          `Returned by: ${admin.name}`,
+          `Total: ${formatMoney(sale.total)}`,
+          parsed.data.reason ? `Reason: ${parsed.data.reason}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      }),
+      sendAdminPush({
         title: "Sale returned",
-        message: `${admin.name} returned a sale worth ${sale.total} FCFA`,
-        storeId: sale.storeId,
-      },
-    }).catch((error) => console.error("Failed to create return notification", error));
-    await sendAdminPush({
-      title: "Sale returned",
-      body: `${admin.name} returned a sale worth ${sale.total} FCFA`,
-      url: "/sales",
-    }).catch((error) => console.error("Failed to send return push", error));
+        body: returnMessage,
+        url: "/sales",
+      }),
+    ]);
 
     return NextResponse.json({ sale });
   } catch (error) {

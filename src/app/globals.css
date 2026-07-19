@@ -172,6 +172,10 @@ textarea {
   display: none;
 }
 
+.mobile-brand {
+  display: none;
+}
+
 .store-welcome {
   min-width: 240px;
 }
@@ -704,14 +708,31 @@ table.data th {
     font-size: 1.3rem;
   }
 
+  .mobile-brand {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: center;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--brand-navy);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .topbar {
     padding: 0.75rem;
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .store-welcome {
     min-width: 0;
-    flex: 1;
+    flex: 1 1 100%;
+    order: 3;
   }
 
   .store-welcome .select {

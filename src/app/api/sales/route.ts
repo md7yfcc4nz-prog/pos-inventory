@@ -267,6 +267,10 @@ export async function POST(request: NextRequest) {
             storeId: sale.storeId,
           },
         }),
+        sendAdminNotification({
+          subject: "Kasuwa Manager low stock alert",
+          text: ["Low stock alert in Kasuwa Manager.", lowStockMessage].join("\n"),
+        }),
         sendAdminPush({
           title: "Low stock alert",
           body: lowStockMessage,

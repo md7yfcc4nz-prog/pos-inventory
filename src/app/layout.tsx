@@ -15,9 +15,15 @@ const body = Source_Sans_3({
 
 export const metadata: Metadata = {
   title: "Kasuwa Manager",
+  applicationName: "Kasuwa Manager",
   description: "Multi-store point of sale and inventory management",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/logo.png", apple: "/logo.png" },
+  appleWebApp: {
+    capable: true,
+    title: "Kasuwa Manager",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
