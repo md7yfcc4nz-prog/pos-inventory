@@ -18,7 +18,11 @@ export const metadata: Metadata = {
   applicationName: "Kasuwa Manager",
   description: "Multi-store point of sale and inventory management",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/logo.png", apple: "/logo.png" },
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    apple: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: [{ url: "/logo.png", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     title: "Kasuwa Manager",

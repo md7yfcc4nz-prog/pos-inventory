@@ -21,6 +21,7 @@ const links = [
   { href: "/inventory", labelKey: "inventory" },
   { href: "/pos", labelKey: "pos" },
   { href: "/sales", labelKey: "sales" },
+  { href: "/expenses", labelKey: "expenses" },
   { href: "/admin/stores", labelKey: "stores", admin: true },
   { href: "/admin/users", labelKey: "users", admin: true },
 ];
