@@ -30,18 +30,21 @@ export default function ExpensesPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [query, setQuery] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [incurredAt, setIncurredAt] = useState(todayLocal());
 
-  async function load() {
-    const res = await fetch("/api/expenses");
+  async function load(nextQuery = query) {
+    const params = new URLSearchParams();
+    if (nextQuery.trim()) params.set("q", nextQuery.trim());
+    const res = await fetch(`/api/expenses${params.toString() ? `?${params}` : ""}`);
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error || t("expenseLoadFailed"));
-      return;
+      throw new Error(data.error || t("expenseLoadFailed"));
     }
     setExpenses(data.expenses);
     setTotal(data.total || 0);
@@ -74,6 +77,32 @@ export default function ExpensesPage() {
     };
   }, []);
 
+  async function onSearch(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSearching(true);
+    try {
+      await load(query);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("expenseLoadFailed"));
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function clearSearch() {
+    setQuery("");
+    setError("");
+    setSearching(true);
+    try {
+      await load("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("expenseLoadFailed"));
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -103,7 +132,11 @@ export default function ExpensesPage() {
     setAmount("");
     setIncurredAt(todayLocal());
     setMessage(t("expenseSaved"));
-    await load();
+    try {
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("expenseLoadFailed"));
+    }
   }
 
   async function editExpense(expense: Expense) {
@@ -139,7 +172,11 @@ export default function ExpensesPage() {
       return;
     }
     setMessage(t("expenseUpdated"));
-    await load();
+    try {
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("expenseLoadFailed"));
+    }
   }
 
   async function removeExpense(expense: Expense) {
@@ -153,7 +190,11 @@ export default function ExpensesPage() {
       return;
     }
     setMessage(t("expenseDeleted"));
-    await load();
+    try {
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("expenseLoadFailed"));
+    }
   }
 
   return (
@@ -183,6 +224,29 @@ export default function ExpensesPage() {
           {expenses.length} {t("transactions")}
         </div>
       </div>
+
+      <form className="card filters" style={{ padding: "1rem", marginBottom: "1rem" }} onSubmit={onSearch}>
+        <div className="field" style={{ flex: "1 1 240px", marginBottom: 0 }}>
+          <label className="label" htmlFor="expense-search">
+            {t("searchExpenses")}
+          </label>
+          <input
+            id="expense-search"
+            className="input"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("searchExpensesPlaceholder")}
+          />
+        </div>
+        <button className="btn btn-primary" disabled={searching} type="submit">
+          {searching ? t("loading") : t("search")}
+        </button>
+        {query && (
+          <button className="btn btn-secondary" disabled={searching} type="button" onClick={clearSearch}>
+            {t("clearSearch")}
+          </button>
+        )}
+      </form>
 
       <div className="split-2">
         <form className="card" style={{ padding: "1.2rem" }} onSubmit={onSubmit}>
@@ -254,7 +318,7 @@ export default function ExpensesPage() {
               ) : expenses.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="empty">
-                    {t("noExpenses")}
+                    {query ? t("noExpensesMatch") : t("noExpenses")}
                   </td>
                 </tr>
               ) : (

@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     }
     await assertStoreAccess(user, storeId);
 
+    const query = request.nextUrl.searchParams.get("q")?.trim() || "";
     const expenses = await prisma.expense.findMany({
       where: { storeId },
       include: {
@@ -37,9 +38,24 @@ export async function GET(request: NextRequest) {
       take: 200,
     });
 
-    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const normalizedQuery = query.toLowerCase();
+    const filtered =
+      normalizedQuery.length === 0
+        ? expenses
+        : expenses.filter((expense) => {
+            const amountText = String(Math.round(expense.amount));
+            const dateText = expense.incurredAt.toISOString().slice(0, 10);
+            return (
+              expense.description.toLowerCase().includes(normalizedQuery) ||
+              expense.createdBy.name.toLowerCase().includes(normalizedQuery) ||
+              amountText.includes(normalizedQuery) ||
+              dateText.includes(normalizedQuery)
+            );
+          });
 
-    return NextResponse.json({ expenses, storeId, total });
+    const total = filtered.reduce((sum, expense) => sum + expense.amount, 0);
+
+    return NextResponse.json({ expenses: filtered, storeId, total, q: query });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

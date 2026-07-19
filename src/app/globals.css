@@ -624,6 +624,7 @@ table.data th {
   flex-wrap: wrap;
   gap: 0.65rem;
   margin-bottom: 1rem;
+  align-items: flex-end;
 }
 
 .chip {
