@@ -44,6 +44,9 @@ function LoginForm() {
           <p className="page-sub" style={{ marginBottom: 0 }}>
             {t("loginSubtitle")}
           </p>
+          <p className="page-sub" style={{ marginTop: "0.55rem", marginBottom: 0, fontSize: "0.88rem" }}>
+            {t("concurrentLoginHint")}
+          </p>
         </div>
 
         {error ? <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div> : null}

@@ -251,19 +251,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="welcome-text">
               {t("welcomeTo")} <strong>{activeStore?.name || t("activeStore")}</strong>
             </div>
-            <select
-              className="select"
-              aria-label={t("activeStore")}
-              value={activeStoreId}
-              onChange={(e) => switchStore(e.target.value)}
-              disabled={stores.length <= 1}
-            >
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
+            {stores.length === 0 ? (
+              <div className="alert alert-danger" style={{ marginTop: "0.35rem" }}>
+                {t("noStoreAssigned")}
+              </div>
+            ) : (
+              <select
+                className="select"
+                aria-label={t("activeStore")}
+                value={activeStoreId}
+                onChange={(e) => switchStore(e.target.value)}
+                disabled={stores.length <= 1}
+              >
+                {stores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="currency-note" style={{ fontSize: "0.78rem", color: "var(--ink-muted)", marginTop: 4 }}>
               {t("currencyNote")}
             </div>
