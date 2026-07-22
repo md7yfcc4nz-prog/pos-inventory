@@ -109,11 +109,9 @@ function InventoryInner() {
           <h1 className="page-title">{t("inventory")}</h1>
           <p className="page-sub">{t("inventorySubtitle")}</p>
         </div>
-        {isAdmin && (
-          <Link className="btn btn-primary" href="/inventory/new">
-            {t("addProduct")}
-          </Link>
-        )}
+        <Link className="btn btn-primary" href="/inventory/new">
+          {t("addProduct")}
+        </Link>
       </div>
 
       <div className="filters">
@@ -184,19 +182,19 @@ function InventoryInner() {
               <th>{t("price")}</th>
               <th>{t("expiry")}</th>
               <th>{t("status")}</th>
-              {isAdmin && <th></th>}
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={isAdmin ? 9 : 8} className="empty">
+                <td colSpan={9} className="empty">
                   {t("loading")}
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 9 : 8} className="empty">
+                <td colSpan={9} className="empty">
                   {t("noProducts")}
                 </td>
               </tr>
@@ -211,11 +209,7 @@ function InventoryInner() {
                       ) : (
                         <div className="thumb-fallback">{p.name.slice(0, 2).toUpperCase()}</div>
                       )}
-                      {isAdmin ? (
-                        <Link href={`/inventory/${p.id}`}>{p.name}</Link>
-                      ) : (
-                        <span>{p.name}</span>
-                      )}
+                      <Link href={`/inventory/${p.id}`}>{p.name}</Link>
                     </div>
                   </td>
                   <td data-label={t("category")}>{t(p.category === "DRINKS" ? "drinks" : p.category === "MEDICINE" ? "medicine" : "other")}</td>
@@ -233,18 +227,18 @@ function InventoryInner() {
                       <span className="badge badge-ok">{t("ok")}</span>
                     )}
                   </td>
-                  {isAdmin && (
-                    <td data-label="">
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
-                          {t("edit")}
-                        </Link>
+                  <td data-label="">
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
+                        {t("edit")}
+                      </Link>
+                      {isAdmin && (
                         <button className="btn btn-danger" onClick={() => removeProduct(p.id)}>
                           {t("delete")}
                         </button>
-                      </div>
-                    </td>
-                  )}
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}

@@ -62,7 +62,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const user = await requireAdmin();
+    const user = await requireUser();
     const { id } = await params;
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);

@@ -33,15 +33,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (
-    pathname.startsWith("/inventory/") &&
-    session?.role !== "ADMIN"
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/inventory";
-    return NextResponse.redirect(url);
-  }
-
   return NextResponse.next();
 }
 
