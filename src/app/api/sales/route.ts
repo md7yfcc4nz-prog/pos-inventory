@@ -17,6 +17,10 @@ import {
 const saleSchema = z.object({
   storeId: z.string().optional(),
   paymentMethod: z.enum(["CASH", "CARD"]).default(PaymentMethod.CASH),
+  soldAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   items: z
     .array(
       z.object({
@@ -63,6 +67,19 @@ export async function GET(request: NextRequest) {
       netTotal: number;
       salesCount: number;
       returnsCount: number;
+      byCategory: Array<{
+        category: string;
+        categoryName: string;
+        salesTotal: number;
+        quantity: number;
+      }>;
+      topProducts: Array<{
+        productId: string;
+        name: string;
+        category: string;
+        quantity: number;
+        salesTotal: number;
+      }>;
     } | null = null;
 
     if (from || to) {
@@ -100,20 +117,77 @@ export async function GET(request: NextRequest) {
         status: "RETURNED",
         returnedAt: { gte: rangeStart, lt: rangeEnd },
       };
-      const [gross, returns, salesCount, returnsCount] = await Promise.all([
-        prisma.sale.aggregate({
-          where: grossWhere,
-          _sum: { total: true },
-        }),
-        prisma.sale.aggregate({
-          where: returnsWhere,
-          _sum: { total: true },
-        }),
-        prisma.sale.count({ where: grossWhere }),
-        prisma.sale.count({ where: returnsWhere }),
-      ]);
+      const [gross, returns, salesCount, returnsCount, saleItems, categories] =
+        await Promise.all([
+          prisma.sale.aggregate({
+            where: grossWhere,
+            _sum: { total: true },
+          }),
+          prisma.sale.aggregate({
+            where: returnsWhere,
+            _sum: { total: true },
+          }),
+          prisma.sale.count({ where: grossWhere }),
+          prisma.sale.count({ where: returnsWhere }),
+          prisma.saleItem.findMany({
+            where: {
+              sale: {
+                storeId,
+                status: "COMPLETED",
+                createdAt: { gte: rangeStart, lt: rangeEnd },
+              },
+            },
+            include: {
+              product: { select: { id: true, name: true, category: true } },
+            },
+          }),
+          prisma.productCategory.findMany({
+            where: { archivedAt: null },
+          }),
+        ]);
       const salesTotal = gross._sum?.total ?? 0;
       const returnsTotal = returns._sum?.total ?? 0;
+      const categoryNames = new Map(categories.map((c) => [c.key, c.name]));
+
+      const categoryMap = new Map<
+        string,
+        { category: string; categoryName: string; salesTotal: number; quantity: number }
+      >();
+      const productMap = new Map<
+        string,
+        {
+          productId: string;
+          name: string;
+          category: string;
+          quantity: number;
+          salesTotal: number;
+        }
+      >();
+
+      for (const item of saleItems) {
+        const categoryKey = item.product.category || "OTHER";
+        const categoryRow = categoryMap.get(categoryKey) || {
+          category: categoryKey,
+          categoryName: categoryNames.get(categoryKey) || categoryKey,
+          salesTotal: 0,
+          quantity: 0,
+        };
+        categoryRow.salesTotal += item.lineTotal;
+        categoryRow.quantity += item.quantity;
+        categoryMap.set(categoryKey, categoryRow);
+
+        const productRow = productMap.get(item.productId) || {
+          productId: item.productId,
+          name: item.product.name,
+          category: categoryKey,
+          quantity: 0,
+          salesTotal: 0,
+        };
+        productRow.quantity += item.quantity;
+        productRow.salesTotal += item.lineTotal;
+        productMap.set(item.productId, productRow);
+      }
+
       requestedReport = {
         from,
         to,
@@ -122,6 +196,12 @@ export async function GET(request: NextRequest) {
         netTotal: salesTotal - returnsTotal,
         salesCount,
         returnsCount,
+        byCategory: Array.from(categoryMap.values()).sort(
+          (a, b) => b.salesTotal - a.salesTotal
+        ),
+        topProducts: Array.from(productMap.values())
+          .sort((a, b) => b.quantity - a.quantity || b.salesTotal - a.salesTotal)
+          .slice(0, 5),
       };
     }
 
@@ -152,6 +232,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No store available" }, { status: 400 });
     }
     await assertStoreAccess(user, storeId);
+
+    let soldAt: Date | undefined;
+    if (parsed.data.soldAt) {
+      soldAt = new Date(`${parsed.data.soldAt}T12:00:00.000Z`);
+      if (
+        Number.isNaN(soldAt.getTime()) ||
+        soldAt.toISOString().slice(0, 10) !== parsed.data.soldAt
+      ) {
+        return NextResponse.json({ error: "Invalid sale date" }, { status: 400 });
+      }
+      const tomorrow = new Date();
+      tomorrow.setUTCHours(23, 59, 59, 999);
+      if (soldAt > tomorrow) {
+        return NextResponse.json({ error: "Sale date cannot be in the future" }, { status: 400 });
+      }
+    }
 
     const sale = await prisma.$transaction(async (tx) => {
       const lineItems: Array<{
@@ -206,6 +302,7 @@ export async function POST(request: NextRequest) {
           paymentMethod: parsed.data.paymentMethod,
           subtotal,
           total: subtotal,
+          ...(soldAt ? { createdAt: soldAt } : {}),
           items: {
             create: lineItems,
           },

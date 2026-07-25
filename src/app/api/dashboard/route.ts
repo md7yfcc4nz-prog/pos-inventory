@@ -28,6 +28,7 @@ export async function GET() {
         expired: [],
         nearExpiry: [],
         recent: [],
+        topProducts: [],
       });
     }
 
@@ -81,6 +82,38 @@ export async function GET() {
       },
     });
 
+    const soldItems = await prisma.saleItem.findMany({
+      where: {
+        sale: {
+          storeId,
+          status: "COMPLETED",
+        },
+      },
+      include: {
+        product: { select: { id: true, name: true, category: true } },
+      },
+    });
+
+    const topMap = new Map<
+      string,
+      { productId: string; name: string; category: string; quantity: number; salesTotal: number }
+    >();
+    for (const item of soldItems) {
+      const row = topMap.get(item.productId) || {
+        productId: item.productId,
+        name: item.product.name,
+        category: item.product.category,
+        quantity: 0,
+        salesTotal: 0,
+      };
+      row.quantity += item.quantity;
+      row.salesTotal += item.lineTotal;
+      topMap.set(item.productId, row);
+    }
+    const topProducts = Array.from(topMap.values())
+      .sort((a, b) => b.quantity - a.quantity || b.salesTotal - a.salesTotal)
+      .slice(0, 5);
+
     return NextResponse.json({
       storeId,
       metrics: {
@@ -95,6 +128,7 @@ export async function GET() {
       lowStock: lowStock.slice(0, 8),
       expired: expired.slice(0, 8),
       nearExpiry: nearExpiry.slice(0, 8),
+      topProducts,
       recent: recent.map((p) => ({
         id: p.id,
         name: p.name,

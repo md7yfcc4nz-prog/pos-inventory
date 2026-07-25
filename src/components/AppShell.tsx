@@ -23,6 +23,7 @@ const links = [
   { href: "/sales", labelKey: "sales" },
   { href: "/expenses", labelKey: "expenses" },
   { href: "/admin/stores", labelKey: "stores", admin: true },
+  { href: "/admin/categories", labelKey: "categories", admin: true },
   { href: "/admin/users", labelKey: "users", admin: true },
 ];
 
@@ -245,11 +246,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ☰
           </button>
           <div className="mobile-brand" aria-hidden="true">
-            Kasuwa Manager
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="" className="topbar-logo" />
+            <span>Kasuwa Manager</span>
           </div>
           <div className="store-welcome">
-            <div className="welcome-text">
-              {t("welcomeTo")} <strong>{activeStore?.name || t("activeStore")}</strong>
+            <div className="welcome-brand">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Kasuwa Manager" className="topbar-logo" />
+              <div className="welcome-text">
+                {t("welcomeTo")} <strong>{activeStore?.name || t("activeStore")}</strong>
+              </div>
             </div>
             {stores.length === 0 ? (
               <div className="alert alert-danger" style={{ marginTop: "0.35rem" }}>

@@ -4,9 +4,15 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
 
+type CategoryOption = {
+  key: string;
+  name: string;
+  requiresExpiry: boolean;
+};
+
 type FormState = {
   name: string;
-  category: "DRINKS" | "MEDICINE" | "OTHER";
+  category: string;
   barcode: string;
   supplier: string;
   cost: string;
@@ -36,10 +42,31 @@ export default function ProductFormPage() {
   const router = useRouter();
   const isNew = params.id === "new";
   const [form, setForm] = useState<FormState>(empty);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [uploading, setUploading] = useState(false);
+
+  const selectedCategory = categories.find((c) => c.key === form.category);
+  const requiresExpiry = Boolean(selectedCategory?.requiresExpiry || form.category === "MEDICINE");
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load categories");
+        setCategories(data.categories);
+        if (isNew) {
+          const other = data.categories.find((c: CategoryOption) => c.key === "OTHER");
+          setForm((prev) => ({
+            ...prev,
+            category: other?.key || data.categories[0]?.key || prev.category,
+          }));
+        }
+      })
+      .catch((err) => setError(err.message));
+  }, [isNew]);
 
   useEffect(() => {
     if (isNew) return;
@@ -136,11 +163,14 @@ export default function ProductFormPage() {
             <select
               className="select"
               value={form.category}
-              onChange={(e) => update("category", e.target.value as FormState["category"])}
+              onChange={(e) => update("category", e.target.value)}
+              required
             >
-              <option value="DRINKS">{t("drinks")}</option>
-              <option value="MEDICINE">{t("medicine")}</option>
-              <option value="OTHER">{t("other")}</option>
+              {categories.map((category) => (
+                <option key={category.key} value={category.key}>
+                  {category.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -177,13 +207,15 @@ export default function ProductFormPage() {
             <input className="input" type="number" min="0" value={form.lowStockThreshold} onChange={(e) => update("lowStockThreshold", e.target.value)} required />
           </div>
           <div className="field">
-            <label className="label">{t("expiryDate")} ({form.category === "MEDICINE" ? t("required") : t("optional")})</label>
+            <label className="label">
+              {t("expiryDate")} ({requiresExpiry ? t("required") : t("optional")})
+            </label>
             <input
               className="input"
               type="date"
               value={form.expiryDate}
               onChange={(e) => update("expiryDate", e.target.value)}
-              required={form.category === "MEDICINE"}
+              required={requiresExpiry}
             />
           </div>
         </div>

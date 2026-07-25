@@ -21,10 +21,17 @@ type DashboardData = {
   recent: Array<{
     id: string;
     name: string;
-    category: "DRINKS" | "MEDICINE" | "OTHER";
+    category: string;
     price: number;
     quantity: number;
     createdAt: string;
+  }>;
+  topProducts: Array<{
+    productId: string;
+    name: string;
+    category: string;
+    quantity: number;
+    salesTotal: number;
   }>;
 };
 
@@ -114,7 +121,47 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="split-2">
+      <div className="split-2" style={{ marginBottom: "1.2rem" }}>
+        <section className="card">
+          <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
+            <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("topSellingProducts")}</h2>
+          </div>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{t("product")}</th>
+                  <th>{t("quantity")}</th>
+                  <th>{t("totalSales")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.topProducts.map((item, index) => (
+                  <tr key={item.productId}>
+                    <td data-label="#">{index + 1}</td>
+                    <td data-label={t("product")}>
+                      <Link href={`/inventory/${item.productId}`}>{item.name}</Link>
+                      <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
+                        {item.category}
+                      </div>
+                    </td>
+                    <td data-label={t("quantity")}>{item.quantity}</td>
+                    <td data-label={t("totalSales")}>{formatMoney(item.salesTotal)}</td>
+                  </tr>
+                ))}
+                {data.topProducts.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="empty">
+                      {t("noSalesYet")}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section className="card">
           <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
             <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("recentlyAdded")}</h2>
@@ -138,7 +185,7 @@ export default function DashboardPage() {
                         {formatDate(item.createdAt)}
                       </div>
                     </td>
-                    <td data-label={t("category")}>{t(item.category === "DRINKS" ? "drinks" : item.category === "MEDICINE" ? "medicine" : "other")}</td>
+                    <td data-label={t("category")}>{item.category}</td>
                     <td data-label={t("quantity")}>{item.quantity}</td>
                     <td data-label={t("price")}>{formatMoney(item.price)}</td>
                   </tr>
@@ -154,7 +201,9 @@ export default function DashboardPage() {
             </table>
           </div>
         </section>
+      </div>
 
+      <div className="split-2">
         <section className="card">
           <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
             <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("expiryWatch")}</h2>

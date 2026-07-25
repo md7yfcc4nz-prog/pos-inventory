@@ -43,6 +43,16 @@ model UserStore {
   @@id([userId, storeId])
 }
 
+model ProductCategory {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  name           String    @unique
+  requiresExpiry Boolean   @default(false)
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
 model Product {
   id                String     @id @default(cuid())
   name              String

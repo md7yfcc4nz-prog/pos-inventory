@@ -176,13 +176,106 @@ textarea {
   display: none;
 }
 
+.chart-layout {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pie-chart {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 auto;
+}
+
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.chart-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.bar-chart {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 28%) 1fr minmax(110px, auto);
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.bar-label {
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #e8eee9;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.bar-value {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  text-align: right;
+}
+
 .store-welcome {
   min-width: 240px;
 }
 
 .welcome-text {
   margin-bottom: 0.35rem;
-  color: var(--ink-muted);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.topbar-logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid var(--line);
+  padding: 0.2rem;
+  flex: 0 0 auto;
 }
 
 .topbar-actions {
@@ -666,6 +759,15 @@ table.data th {
     grid-template-columns: 1fr;
   }
 
+  .bar-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .bar-value {
+    text-align: left;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -710,18 +812,33 @@ table.data th {
   }
 
   .mobile-brand {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     flex: 1 1 auto;
     min-width: 0;
     align-self: center;
     font-family: var(--font-display);
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--brand-navy);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .mobile-brand .topbar-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .welcome-brand .topbar-logo {
+    display: none;
+  }
+
+  .welcome-text {
+    font-size: 1.2rem;
   }
 
   .topbar {

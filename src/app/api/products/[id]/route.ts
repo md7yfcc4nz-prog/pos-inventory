@@ -13,7 +13,7 @@ import {
 
 const updateSchema = z.object({
   name: z.string().min(1),
-  category: z.enum(["DRINKS", "MEDICINE", "OTHER"]),
+  category: z.string().min(1),
   barcode: z.string().optional().nullable(),
   supplier: z.string().optional().nullable(),
   cost: z.coerce.number().min(0),
@@ -71,8 +71,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     const data = parsed.data;
-    if (data.category === Category.MEDICINE && !data.expiryDate) {
-      return NextResponse.json({ error: "Expiry date is required for medicine" }, { status: 400 });
+    const categoryRow = await prisma.productCategory.findFirst({
+      where: { key: data.category, archivedAt: null },
+    });
+    if (!categoryRow) {
+      return NextResponse.json({ error: "Unknown product category" }, { status: 400 });
+    }
+    if ((categoryRow.requiresExpiry || data.category === Category.MEDICINE) && !data.expiryDate) {
+      return NextResponse.json({ error: "Expiry date is required for this category" }, { status: 400 });
     }
 
     const storeId = await resolveStoreId(user, data.storeId || (await getActiveStoreId()));

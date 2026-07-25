@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { SalesBarChart, SalesPieChart } from "@/components/SalesCharts";
 import { formatDate, formatMoney } from "@/lib/utils";
 
 type Sale = {
@@ -30,6 +31,19 @@ type Report = {
   netTotal: number;
   salesCount: number;
   returnsCount: number;
+  byCategory: Array<{
+    category: string;
+    categoryName: string;
+    salesTotal: number;
+    quantity: number;
+  }>;
+  topProducts: Array<{
+    productId: string;
+    name: string;
+    category: string;
+    quantity: number;
+    salesTotal: number;
+  }>;
 };
 
 type SalesView = "report" | "history";
@@ -276,6 +290,94 @@ export default function SalesPage() {
                     <div className="metric-label">{t("netSales")}</div>
                     <div className="metric-value">{formatMoney(report.netTotal)}</div>
                   </div>
+                </div>
+
+                <div className="split-2" style={{ marginBottom: "1rem" }}>
+                  <section className="card" style={{ padding: "1rem" }}>
+                    <h3 className="section-title" style={{ marginTop: 0 }}>
+                      {t("salesByCategory")}
+                    </h3>
+                    <SalesPieChart
+                      emptyLabel={t("noSalesInRange")}
+                      slices={report.byCategory.map((row) => ({
+                        label: row.categoryName,
+                        value: row.salesTotal,
+                      }))}
+                    />
+                    <div className="table-wrap" style={{ marginTop: "1rem" }}>
+                      <table className="data">
+                        <thead>
+                          <tr>
+                            <th>{t("category")}</th>
+                            <th>{t("quantity")}</th>
+                            <th>{t("totalSales")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {report.byCategory.map((row) => (
+                            <tr key={row.category}>
+                              <td data-label={t("category")}>{row.categoryName}</td>
+                              <td data-label={t("quantity")}>{row.quantity}</td>
+                              <td data-label={t("totalSales")}>{formatMoney(row.salesTotal)}</td>
+                            </tr>
+                          ))}
+                          {report.byCategory.length === 0 && (
+                            <tr>
+                              <td colSpan={3} className="empty">
+                                {t("noSalesInRange")}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <section className="card" style={{ padding: "1rem" }}>
+                    <h3 className="section-title" style={{ marginTop: 0 }}>
+                      {t("topSellingProducts")}
+                    </h3>
+                    <SalesBarChart
+                      emptyLabel={t("noSalesInRange")}
+                      formatValue={formatMoney}
+                      bars={report.topProducts.map((row) => ({
+                        label: row.name,
+                        value: row.salesTotal,
+                      }))}
+                    />
+                    <div className="table-wrap" style={{ marginTop: "1rem" }}>
+                      <table className="data">
+                        <thead>
+                          <tr>
+                            <th>{t("product")}</th>
+                            <th>{t("quantity")}</th>
+                            <th>{t("totalSales")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {report.topProducts.map((row) => (
+                            <tr key={row.productId}>
+                              <td data-label={t("product")}>
+                                {row.name}
+                                <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
+                                  {row.category}
+                                </div>
+                              </td>
+                              <td data-label={t("quantity")}>{row.quantity}</td>
+                              <td data-label={t("totalSales")}>{formatMoney(row.salesTotal)}</td>
+                            </tr>
+                          ))}
+                          {report.topProducts.length === 0 && (
+                            <tr>
+                              <td colSpan={3} className="empty">
+                                {t("noSalesInRange")}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
                 </div>
               </>
             ) : (

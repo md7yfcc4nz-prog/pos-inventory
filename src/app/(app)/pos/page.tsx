@@ -27,6 +27,12 @@ export default function PosPage() {
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD">("CASH");
+  const [saleDate, setSaleDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 10);
+  });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -109,6 +115,7 @@ export default function PosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         paymentMethod,
+        soldAt: saleDate,
         items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       }),
     });
@@ -246,6 +253,19 @@ export default function PosPage() {
           )}
 
           <div style={{ marginTop: "1rem", display: "grid", gap: "0.8rem" }}>
+            <div className="field">
+              <label className="label">{t("saleDate")}</label>
+              <input
+                className="input"
+                type="date"
+                value={saleDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setSaleDate(e.target.value)}
+              />
+              <div style={{ color: "var(--ink-muted)", fontSize: "0.8rem", marginTop: 4 }}>
+                {t("lateSaleHint")}
+              </div>
+            </div>
             <div className="field">
               <label className="label">{t("paymentMethod")}</label>
               <select
