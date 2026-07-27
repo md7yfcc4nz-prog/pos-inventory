@@ -25,6 +25,7 @@ type DashboardData = {
     price: number;
     quantity: number;
     createdAt: string;
+    imagePath?: string | null;
   }>;
   topProducts: Array<{
     productId: string;
@@ -39,6 +40,7 @@ export default function DashboardPage() {
   const { t } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
+  const [showTopProducts, setShowTopProducts] = useState(false);
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -121,8 +123,51 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="split-2" style={{ marginBottom: "1.2rem" }}>
-        <section className="card">
+      <section className="card welcome-products" style={{ marginBottom: "1.2rem" }}>
+        <div className="welcome-products-header">
+          <h2>{t("recentlyAdded")}</h2>
+        </div>
+        {data.recent.length === 0 ? (
+          <div className="empty">{t("noProductsYet")}</div>
+        ) : (
+          <div className="product-card-grid">
+            {data.recent.map((item) => (
+              <Link key={item.id} href={`/inventory/${item.id}`} className="product-welcome-card">
+                {item.imagePath ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.imagePath} alt="" className="product-welcome-thumb" />
+                ) : (
+                  <div className="product-welcome-thumb product-welcome-thumb-fallback">
+                    {item.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div className="product-welcome-body">
+                  <strong>{item.name}</strong>
+                  <span className="product-welcome-meta">{item.category}</span>
+                  <span className="product-welcome-meta">{formatDate(item.createdAt)}</span>
+                  <div className="product-welcome-stats">
+                    <span>{item.quantity} {t("quantity").toLowerCase()}</span>
+                    <span className="product-welcome-price">{formatMoney(item.price)}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div style={{ marginBottom: "1.2rem" }}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => setShowTopProducts((open) => !open)}
+        >
+          {showTopProducts ? t("hideTopSelling") : t("showTopSelling")}
+        </button>
+      </div>
+
+      {showTopProducts && (
+        <section className="card" style={{ marginBottom: "1.2rem" }}>
           <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
             <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("topSellingProducts")}</h2>
           </div>
@@ -161,47 +206,7 @@ export default function DashboardPage() {
             </table>
           </div>
         </section>
-
-        <section className="card">
-          <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
-            <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("recentlyAdded")}</h2>
-          </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t("product")}</th>
-                  <th>{t("category")}</th>
-                  <th>{t("quantity")}</th>
-                  <th>{t("price")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recent.map((item) => (
-                  <tr key={item.id}>
-                    <td data-label={t("product")}>
-                      <Link href={`/inventory/${item.id}`}>{item.name}</Link>
-                      <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
-                        {formatDate(item.createdAt)}
-                      </div>
-                    </td>
-                    <td data-label={t("category")}>{item.category}</td>
-                    <td data-label={t("quantity")}>{item.quantity}</td>
-                    <td data-label={t("price")}>{formatMoney(item.price)}</td>
-                  </tr>
-                ))}
-                {data.recent.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="empty">
-                      {t("noProductsYet")}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+      )}
 
       <div className="split-2">
         <section className="card">

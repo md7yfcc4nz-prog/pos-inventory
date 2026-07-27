@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useAdminView } from "@/components/AdminViewContext";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 type Product = {
@@ -33,6 +34,7 @@ const FILTERS = [
 
 function InventoryInner() {
   const { t } = useLanguage();
+  const { showAdminFeatures } = useAdminView();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -41,7 +43,6 @@ function InventoryInner() {
   const [filter, setFilter] = useState(searchParams.get("filter") || "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const suppliers = useMemo(() => {
     const set = new Set<string>();
@@ -73,10 +74,6 @@ function InventoryInner() {
 
   useEffect(() => {
     load();
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => setIsAdmin(data.user?.role === "ADMIN"))
-      .catch(() => setIsAdmin(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -232,7 +229,7 @@ function InventoryInner() {
                       <Link className="btn btn-secondary" href={`/inventory/${p.id}`}>
                         {t("edit")}
                       </Link>
-                      {isAdmin && (
+                      {showAdminFeatures && (
                         <button className="btn btn-danger" onClick={() => removeProduct(p.id)}>
                           {t("delete")}
                         </button>

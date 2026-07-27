@@ -6,7 +6,7 @@ type Slice = {
   color: string;
 };
 
-const COLORS = ["#0b1f3a", "#1f9d55", "#a15c00", "#3b82f6", "#b42318", "#7c3aed", "#0f766e"];
+const COLORS = ["#1d4ed8", "#dc2626", "#1e40af", "#ef4444", "#2563eb", "#b91c1c", "#3b82f6"];
 
 export function SalesPieChart({
   slices,

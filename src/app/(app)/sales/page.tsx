@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useAdminView } from "@/components/AdminViewContext";
 import { SalesBarChart, SalesPieChart } from "@/components/SalesCharts";
 import { formatDate, formatMoney } from "@/lib/utils";
 
@@ -57,25 +58,18 @@ function todayLocal() {
 
 export default function SalesPage() {
   const { t } = useLanguage();
+  const { showAdminFeatures } = useAdminView();
   const [view, setView] = useState<SalesView>("report");
   const [sales, setSales] = useState<Sale[]>([]);
   const [error, setError] = useState("");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "RETURNED">("ALL");
   const [busyId, setBusyId] = useState("");
   const [reportFrom, setReportFrom] = useState(todayLocal());
   const [reportTo, setReportTo] = useState(todayLocal());
   const [report, setReport] = useState<Report | null>(null);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => setIsAdmin(data.user?.role === "ADMIN"))
-      .catch(() => setIsAdmin(false));
-  }, []);
 
   useEffect(() => {
     if (!reportFrom || !reportTo || reportFrom > reportTo) {
@@ -412,19 +406,19 @@ export default function SalesPage() {
                   <th>{t("payment")}</th>
                   <th>{t("status")}</th>
                   <th>{t("total")}</th>
-                  {isAdmin && <th></th>}
+                  {showAdminFeatures && <th></th>}
                 </tr>
               </thead>
               <tbody>
                 {historyLoading ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="empty">
+                    <td colSpan={showAdminFeatures ? 7 : 6} className="empty">
                       {t("loading")}
                     </td>
                   </tr>
                 ) : visibleSales.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="empty">
+                    <td colSpan={showAdminFeatures ? 7 : 6} className="empty">
                       No transactions in this view
                     </td>
                   </tr>
@@ -456,7 +450,7 @@ export default function SalesPage() {
                       <td data-label={t("total")}>
                         {sale.status === "RETURNED" ? `-${formatMoney(sale.total)}` : formatMoney(sale.total)}
                       </td>
-                      {isAdmin && (
+                      {showAdminFeatures && (
                         <td data-label="">
                           {sale.status !== "RETURNED" && (
                             <button

@@ -4,111 +4,91 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
-import { cn } from "@/lib/utils";
+import { AdminViewProvider, useAdminView } from "@/components/AdminViewContext";
 
 type Store = { id: string; name: string };
-type User = { id: string; name: string; email: string; role: "ADMIN" | "STAFF" };
-type AppNotification = {
+type User = { id: string; email: string; role: "ADMIN" | "STAFF"; storeId: string | null };
+type Notification = {
   id: string;
+  type: string;
   title: string;
-  message: string;
-  readAt: string | null;
+  body: string;
   createdAt: string;
+  readAt: string | null;
 };
 
-const links = [
+const nav: Array<{ href: string; labelKey: string; adminOnly?: boolean }> = [
   { href: "/", labelKey: "dashboard" },
   { href: "/inventory", labelKey: "inventory" },
   { href: "/pos", labelKey: "pos" },
   { href: "/sales", labelKey: "sales" },
   { href: "/expenses", labelKey: "expenses" },
-  { href: "/admin/stores", labelKey: "stores", admin: true },
-  { href: "/admin/categories", labelKey: "categories", admin: true },
-  { href: "/admin/users", labelKey: "users", admin: true },
+  { href: "/admin/stores", labelKey: "stores", adminOnly: true },
+  { href: "/admin/users", labelKey: "users", adminOnly: true },
+  { href: "/admin/categories", labelKey: "categories", adminOnly: true },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const { language, setLanguage, t } = useLanguage();
+function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
+  const { showAdminFeatures, viewMode, setViewMode, isAdminUser } = useAdminView();
   const [user, setUser] = useState<User | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
-  const [activeStoreId, setActiveStoreId] = useState<string>("");
+  const [activeStoreId, setActiveStoreId] = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [navOpen, setNavOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [pushSupported, setPushSupported] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!isAdminUser || viewMode !== "staff" || !pathname.startsWith("/admin")) return;
+    router.replace("/");
+  }, [isAdminUser, viewMode, pathname, router]);
+
+  useEffect(() => {
     async function load() {
-      const res = await fetch("/api/auth/me");
-      if (!res.ok) {
-        router.replace("/login");
-        return;
-      }
-      const data = await res.json();
-      if (cancelled) return;
-      setUser(data.user);
-      setStores(data.stores || []);
-      setActiveStoreId(data.activeStoreId || "");
+      const [meRes, storesRes] = await Promise.all([
+        fetch("/api/auth/me"),
+        fetch("/api/stores"),
+      ]);
+      const me = await meRes.json();
+      const storesData = await storesRes.json();
+      setUser(me.user);
+      setStores(storesData.stores || []);
+      setActiveStoreId(me.activeStoreId || storesData.stores?.[0]?.id || "");
       setLoading(false);
     }
     load();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    if (user?.role !== "ADMIN") return;
-    let cancelled = false;
-    async function loadNotifications() {
-      const res = await fetch("/api/notifications");
-      if (!res.ok || cancelled) return;
-      const data = await res.json();
-      setNotifications(data.notifications || []);
-      setUnreadCount(data.unreadCount || 0);
+    if (!showAdminFeatures) {
+      setNotifications([]);
+      return;
     }
-    loadNotifications();
-    const timer = window.setInterval(loadNotifications, 60_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [user?.role]);
+    fetch("/api/notifications")
+      .then((res) => res.json())
+      .then((data) => setNotifications(data.notifications || []))
+      .catch(() => setNotifications([]));
+  }, [showAdminFeatures]);
 
   useEffect(() => {
-    if (user?.role !== "ADMIN") return;
-    const supported =
-      "serviceWorker" in navigator &&
-      "PushManager" in window &&
-      "Notification" in window;
-    setPushSupported(supported);
-    if (!supported) return;
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((registration) => registration.pushManager.getSubscription())
-      .then((subscription) => setPushEnabled(Boolean(subscription)))
-      .catch((error) => console.error("Push setup failed:", error));
-  }, [user?.role]);
+    setMenuOpen(false);
+  }, [pathname]);
 
-  async function switchStore(storeId: string) {
+  async function onStoreChange(storeId: string) {
     setActiveStoreId(storeId);
-    await fetch("/api/stores/switch", {
+    await fetch("/api/stores/active", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ storeId }),
     });
     router.refresh();
-    window.location.reload();
   }
 
-  async function logout() {
+  async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
   }
@@ -117,239 +97,236 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     await fetch("/api/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ all: true }),
+      body: JSON.stringify({ markAllRead: true }),
     });
-    setNotifications((items) =>
-      items.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() }))
-    );
-    setUnreadCount(0);
+    setNotifications((items) => items.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })));
   }
 
   async function clearNotifications() {
-    if (!confirm(`${t("clearAll")} ${t("notifications").toLowerCase()}?`)) return;
     await fetch("/api/notifications", { method: "DELETE" });
     setNotifications([]);
-    setUnreadCount(0);
   }
 
-  function urlBase64ToUint8Array(value: string) {
-    const padding = "=".repeat((4 - (value.length % 4)) % 4);
-    const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const raw = window.atob(base64);
-    return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
-  }
-
-  async function enablePush() {
+  async function enablePushAlerts() {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      setPushMessage("Push notifications are not supported in this browser.");
+      return;
+    }
     setPushBusy(true);
+    setPushMessage("");
     try {
-      const permission = await window.Notification.requestPermission();
+      const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        alert(t("pushDenied"));
+        setPushMessage(t("pushDenied"));
         return;
       }
-      const keyRes = await fetch("/api/push");
-      const keyData = await keyRes.json();
-      if (!keyRes.ok) throw new Error(keyData.error || "Push setup failed");
       const registration = await navigator.serviceWorker.register("/sw.js");
-      const subscription =
-        (await registration.pushManager.getSubscription()) ||
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
-        }));
-      const res = await fetch("/api/push", {
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      });
+      const res = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(subscription.toJSON()),
+        body: JSON.stringify({ subscription }),
       });
-      if (!res.ok) throw new Error("Failed to save phone alerts");
-      setPushEnabled(true);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to enable alerts");
+      }
+      setPushMessage(t("alertsOn"));
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Push setup failed");
+      setPushMessage(error instanceof Error ? error.message : "Failed to enable alerts");
     } finally {
       setPushBusy(false);
     }
   }
 
-  async function disablePush() {
+  async function disablePushAlerts() {
     setPushBusy(true);
+    setPushMessage("");
     try {
       const registration = await navigator.serviceWorker.getRegistration("/sw.js");
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
-        await fetch("/api/push", {
+        await fetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: subscription.endpoint }),
         });
         await subscription.unsubscribe();
       }
-      setPushEnabled(false);
+      setPushMessage(t("disableAlerts"));
+    } catch (error) {
+      setPushMessage(error instanceof Error ? error.message : "Failed to disable alerts");
     } finally {
       setPushBusy(false);
     }
   }
 
-  const activeStore = stores.find((store) => store.id === activeStoreId);
+  const unread = notifications.filter((item) => !item.readAt).length;
+  const shellClass = [
+    "app-shell",
+    isAdminUser && viewMode === "admin" ? "admin-view" : "staff-view",
+  ].join(" ");
 
   if (loading) {
-    return (
-      <div className="login-page">
-        <div className="login-card">{t("loadingWorkspace")}</div>
-      </div>
-    );
+    return <div className="empty">{t("loadingWorkspace")}</div>;
   }
 
   return (
-    <div className="app-shell">
-      {navOpen && <button className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-label="Close menu" />}
-      <aside className={cn("sidebar", navOpen && "sidebar-open")}>
+    <div className={shellClass}>
+      <div
+        className={`sidebar-backdrop ${menuOpen ? "sidebar-backdrop-visible" : ""}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden={!menuOpen}
+      />
+      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="Kasuwa Manager" className="brand-logo" />
           <div className="brand-mark">Kasuwa Manager</div>
-          <div className="brand-sub">POS & inventory</div>
+          <div className="brand-sub">POS & Inventory</div>
         </div>
         <nav className="nav-list">
-          {links
-            .filter((l) => !l.admin || user?.role === "ADMIN")
-            .map((link) => (
+          {nav
+            .filter((item) => !item.adminOnly || showAdminFeatures)
+            .map((item) => (
               <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setNavOpen(false)}
-                className={cn(
-                  "nav-link",
-                  pathname === link.href ||
-                    (link.href !== "/" && pathname.startsWith(link.href))
-                    ? "active"
-                    : ""
-                )}
+                key={item.href}
+                href={item.href}
+                className={`nav-link ${pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)) ? "active" : ""}`}
               >
-                {t(link.labelKey)}
+                {t(item.labelKey)}
               </Link>
             ))}
         </nav>
-        <div style={{ marginTop: "auto", padding: "0.6rem" }}>
-          <div style={{ fontSize: "0.85rem", opacity: 0.75 }}>{t("signedInAs")}</div>
-          <div style={{ fontWeight: 700 }}>{user?.name}</div>
-          <div style={{ fontSize: "0.85rem", opacity: 0.75 }}>{user?.role}</div>
-          <button className="btn sidebar-signout" onClick={logout} type="button">
-            {t("signOut")}
-          </button>
-        </div>
+        <button className="btn btn-secondary sidebar-signout" onClick={signOut}>
+          {t("signOut")}
+        </button>
       </aside>
-
       <div className="main-panel">
         <header className="topbar">
-          <button className="mobile-menu-btn" onClick={() => setNavOpen(true)} aria-label="Open menu">
-            ☰
-          </button>
-          <div className="mobile-brand" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="" className="topbar-logo" />
-            <span>Kasuwa Manager</span>
-          </div>
-          <div className="store-welcome">
-            <div className="welcome-brand">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Kasuwa Manager" className="topbar-logo" />
-              <div className="welcome-text">
-                {t("welcomeTo")} <strong>{activeStore?.name || t("activeStore")}</strong>
-              </div>
-            </div>
-            {stores.length === 0 ? (
-              <div className="alert alert-danger" style={{ marginTop: "0.35rem" }}>
-                {t("noStoreAssigned")}
-              </div>
-            ) : (
-              <select
-                className="select"
-                aria-label={t("activeStore")}
-                value={activeStoreId}
-                onChange={(e) => switchStore(e.target.value)}
-                disabled={stores.length <= 1}
+          <div className="topbar-left">
+            <button
+              type="button"
+              className="btn btn-secondary mobile-menu-btn"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+            <div className="mobile-brand">Kasuwa Manager</div>
+            <div className="topbar-meta">
+              <span className="topbar-label">{t("signedInAs")}</span>
+              <strong>{user?.email}</strong>
+              <span
+                className={`role-badge ${showAdminFeatures ? "role-badge-admin" : "role-badge-staff"}`}
               >
-                {stores.map((store) => (
-                  <option key={store.id} value={store.id}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            <div className="currency-note" style={{ fontSize: "0.78rem", color: "var(--ink-muted)", marginTop: 4 }}>
-              {t("currencyNote")}
+                {showAdminFeatures ? t("admin") : t("staff")}
+              </span>
             </div>
           </div>
           <div className="topbar-actions">
-            <select
-              className="select language-select"
-              aria-label={t("language")}
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as "en" | "fr")}
-            >
-              <option value="en">EN</option>
-              <option value="fr">FR</option>
-            </select>
-            {user?.role === "ADMIN" && (
-              <>
-              {pushSupported && (
-                <button
-                  className={cn("btn", pushEnabled ? "btn-primary" : "btn-secondary", "push-btn")}
-                  disabled={pushBusy}
-                  onClick={pushEnabled ? disablePush : enablePush}
-                  title={pushEnabled ? t("disableAlerts") : t("enableAlerts")}
-                  type="button"
-                >
-                  {pushEnabled ? "📲✓" : "📲"}
-                  <span>{pushEnabled ? t("alertsOn") : t("enableAlerts")}</span>
-                </button>
-              )}
+            {isAdminUser && (
+              <button
+                type="button"
+                className={`btn ${viewMode === "admin" ? "btn-accent" : "btn-primary"} view-mode-toggle`}
+                onClick={() => setViewMode(viewMode === "admin" ? "staff" : "admin")}
+              >
+                {viewMode === "admin" ? t("switchToStaffView") : t("switchToAdminView")}
+              </button>
+            )}
+            {showAdminFeatures && (
               <div className="notification-wrap">
-                <button
-                  className="btn btn-secondary notification-btn"
-                  onClick={() => setNotificationOpen((open) => !open)}
-                  aria-label={t("notifications")}
-                >
-                  🔔
-                  {unreadCount > 0 && <span className="notification-count">{unreadCount}</span>}
-                </button>
-                {notificationOpen && (
-                  <div className="notification-panel">
-                    <div className="notification-header">
-                      <strong>{t("notifications")}</strong>
-                      <button className="text-button" onClick={markAllRead}>{t("markAllRead")}</button>
-                    </div>
-                    <div className="notification-list">
-                      {notifications.length === 0 ? (
-                        <div className="empty notification-empty">{t("noNotifications")}</div>
-                      ) : (
-                        notifications.map((item) => (
-                          <div key={item.id} className={cn("notification-item", !item.readAt && "unread")}>
-                            <strong>{item.title}</strong>
-                            <div>{item.message}</div>
-                            <small>{new Date(item.createdAt).toLocaleString(language)}</small>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {notifications.length > 0 && (
-                      <button className="text-button notification-clear" onClick={clearNotifications}>
+                <details className="notification-panel">
+                  <summary className="btn btn-secondary">
+                    {t("notifications")}
+                    {unread > 0 ? <span className="badge badge-danger">{unread}</span> : null}
+                  </summary>
+                  <div className="notification-dropdown">
+                    <div className="notification-actions">
+                      <button className="btn btn-secondary" onClick={markAllRead}>
+                        {t("markAllRead")}
+                      </button>
+                      <button className="btn btn-secondary" onClick={clearNotifications}>
                         {t("clearAll")}
                       </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="empty">{t("noNotifications")}</div>
+                    ) : (
+                      <ul className="notification-list">
+                        {notifications.map((item) => (
+                          <li key={item.id} className={item.readAt ? "" : "unread"}>
+                            <strong>{item.title}</strong>
+                            <p>{item.body}</p>
+                            <small>{new Date(item.createdAt).toLocaleString()}</small>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
-                )}
+                </details>
               </div>
-              </>
             )}
-            <button className="btn btn-secondary signout-btn" onClick={logout}>
-              {t("signOut")}
-            </button>
+            {showAdminFeatures && (
+              <div className="push-actions">
+                <button className="btn btn-secondary" disabled={pushBusy} onClick={enablePushAlerts}>
+                  {pushBusy ? t("processing") : t("enableAlerts")}
+                </button>
+                <button className="btn btn-secondary" disabled={pushBusy} onClick={disablePushAlerts}>
+                  {t("disableAlerts")}
+                </button>
+              </div>
+            )}
+            {showAdminFeatures && stores.length > 0 && (
+              <label className="store-switch">
+                <span>{t("activeStore")}</span>
+                <select
+                  className="select"
+                  value={activeStoreId}
+                  onChange={(e) => onStoreChange(e.target.value)}
+                >
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         </header>
-        <main className="content">{children}</main>
+        {pushMessage ? <div className="push-banner">{pushMessage}</div> : null}
+        <main className="page-content">{children}</main>
       </div>
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        setIsAdminUser(data.user?.role === "ADMIN");
+        setReady(true);
+      })
+      .catch(() => setReady(true));
+  }, []);
+
+  if (!ready) {
+    return <div className="empty">Loading workspace…</div>;
+  }
+
+  return (
+    <AdminViewProvider isAdminUser={isAdminUser}>
+      <AppShellContent>{children}</AppShellContent>
+    </AdminViewProvider>
   );
 }
