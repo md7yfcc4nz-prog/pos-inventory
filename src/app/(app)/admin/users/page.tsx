@@ -7,6 +7,7 @@ type Store = { id: string; name: string };
 type UserRow = {
   id: string;
   name: string;
+  username: string;
   email: string;
   role: "ADMIN" | "STAFF";
   stores: Store[];
@@ -17,12 +18,15 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("password123");
   const [role, setRole] = useState<"ADMIN" | "STAFF">("STAFF");
   const [storeId, setStoreId] = useState("");
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -48,6 +52,8 @@ export default function AdminUsersPage() {
   function startEdit(user: UserRow) {
     setEditingUser(user);
     setEditName(user.name);
+    setEditUsername(user.username || "");
+    setEditEmail(user.email);
     setEditPassword("");
     setError("");
     setMessage("");
@@ -56,6 +62,8 @@ export default function AdminUsersPage() {
   function cancelEdit() {
     setEditingUser(null);
     setEditName("");
+    setEditUsername("");
+    setEditEmail("");
     setEditPassword("");
   }
 
@@ -68,6 +76,7 @@ export default function AdminUsersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        username: username.trim() || undefined,
         email,
         password,
         role,
@@ -80,6 +89,7 @@ export default function AdminUsersPage() {
       return;
     }
     setName("");
+    setUsername("");
     setEmail("");
     setPassword("password123");
     setRole("STAFF");
@@ -94,8 +104,15 @@ export default function AdminUsersPage() {
     setSavingEdit(true);
     setError("");
     setMessage("");
-    const payload: { name: string; password?: string } = {
+    const payload: {
+      name: string;
+      username: string;
+      email: string;
+      password?: string;
+    } = {
       name: editName.trim(),
+      username: editUsername.trim(),
+      email: editEmail.trim(),
     };
     if (editPassword.trim()) {
       payload.password = editPassword.trim();
@@ -165,7 +182,7 @@ export default function AdminUsersPage() {
           <form className="card" style={{ padding: "1.2rem" }} onSubmit={onSaveEdit}>
             <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>{t("editUser")}</h2>
             <div style={{ color: "var(--ink-muted)", marginBottom: "1rem", fontSize: "0.92rem" }}>
-              {editingUser.email} · {editingUser.role}
+              {editingUser.role}
             </div>
             <div className="field" style={{ marginBottom: "0.8rem" }}>
               <label className="label">{t("name")}</label>
@@ -173,6 +190,27 @@ export default function AdminUsersPage() {
                 className="input"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="field" style={{ marginBottom: "0.8rem" }}>
+              <label className="label">{t("username")}</label>
+              <input
+                className="input"
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                required
+                minLength={2}
+                maxLength={40}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: "0.8rem" }}>
+              <label className="label">{t("email")}</label>
+              <input
+                className="input"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
                 required
               />
             </div>
@@ -191,7 +229,10 @@ export default function AdminUsersPage() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn btn-primary" disabled={savingEdit || !editName.trim()}>
+              <button
+                className="btn btn-primary"
+                disabled={savingEdit || !editName.trim() || !editUsername.trim() || !editEmail.trim()}
+              >
                 {savingEdit ? t("saving") : t("saveChanges")}
               </button>
               <button className="btn btn-secondary" type="button" onClick={cancelEdit} disabled={savingEdit}>
@@ -205,6 +246,17 @@ export default function AdminUsersPage() {
             <div className="field" style={{ marginBottom: "0.8rem" }}>
               <label className="label">{t("name")}</label>
               <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+            <div className="field" style={{ marginBottom: "0.8rem" }}>
+              <label className="label">{t("username")}</label>
+              <input
+                className="input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={t("usernameOptionalHint")}
+                minLength={2}
+                maxLength={40}
+              />
             </div>
             <div className="field" style={{ marginBottom: "0.8rem" }}>
               <label className="label">{t("email")}</label>
@@ -258,7 +310,9 @@ export default function AdminUsersPage() {
                 <tr key={user.id}>
                   <td data-label={t("name")}>
                     <div style={{ fontWeight: 600 }}>{user.name}</div>
-                    <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>{user.email}</div>
+                    <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
+                      @{user.username} · {user.email}
+                    </div>
                   </td>
                   <td data-label={t("role")}>
                     <span className="badge badge-neutral">{user.role}</span>

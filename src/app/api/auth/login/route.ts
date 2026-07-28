@@ -9,26 +9,46 @@ import {
 } from "@/lib/auth";
 import type { Role } from "@/lib/constants";
 import type { SessionUser } from "@/lib/session";
+import { normalizeUsername } from "@/lib/usernames";
 
 const schema = z.object({
-  email: z.string().email(),
+  login: z.string().min(1),
   password: z.string().min(1),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const parsed = schema.safeParse(body);
+    // Support older clients that still send { email }
+    const loginValue =
+      typeof body?.login === "string"
+        ? body.login
+        : typeof body?.email === "string"
+          ? body.email
+          : "";
+    const parsed = schema.safeParse({
+      login: loginValue,
+      password: body?.password,
+    });
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: parsed.data.email.toLowerCase() },
+    const raw = parsed.data.login.trim();
+    const lowered = raw.toLowerCase();
+    const username = normalizeUsername(raw);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: lowered },
+          ...(username ? [{ username }] : []),
+        ],
+      },
     });
 
     if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid email, username, or password" }, { status: 401 });
     }
 
     const sessionUser: SessionUser = {

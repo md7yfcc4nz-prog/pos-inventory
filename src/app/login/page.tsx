@@ -9,7 +9,7 @@ function LoginForm() {
   const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ function LoginForm() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ login, password }),
     });
     const data = await res.json();
     setLoading(false);
@@ -52,16 +52,18 @@ function LoginForm() {
         {error ? <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div> : null}
 
         <div className="field" style={{ marginBottom: "0.9rem" }}>
-          <label className="label" htmlFor="email">
-            {t("email")}
+          <label className="label" htmlFor="login">
+            {t("emailOrUsername")}
           </label>
           <input
-            id="email"
+            id="login"
             className="input"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            autoComplete="username"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
             required
+            placeholder={t("emailOrUsernamePlaceholder")}
           />
         </div>
 
@@ -73,6 +75,7 @@ function LoginForm() {
             id="password"
             className="input"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AuthError, hashPassword, requireAdmin } from "@/lib/auth";
 import { Role } from "@/lib/constants";
+import { isValidUsername, normalizeUsername, usernameFromEmail } from "@/lib/usernames";
 
 export async function GET() {
   try {
@@ -18,6 +19,7 @@ export async function GET() {
       users: users.map((u) => ({
         id: u.id,
         name: u.name,
+        username: u.username,
         email: u.email,
         role: u.role,
         stores: u.stores.map((s) => s.store),
@@ -35,6 +37,7 @@ export async function GET() {
 const createSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
+  username: z.string().min(2).max(40).optional(),
   password: z.string().min(6),
   role: z.enum(["ADMIN", "STAFF"]).default(Role.STAFF),
   storeIds: z.array(z.string()).default([]),
@@ -57,9 +60,21 @@ export async function POST(request: NextRequest) {
     }
 
     const email = parsed.data.email.toLowerCase();
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
+    const username = normalizeUsername(parsed.data.username || usernameFromEmail(email));
+    if (!username || !isValidUsername(username)) {
+      return NextResponse.json(
+        { error: "Username must be 2–40 characters (letters, numbers, . _ -)" },
+        { status: 400 }
+      );
+    }
+
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
       return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+    }
+    const existingUsername = await prisma.user.findUnique({ where: { username } });
+    if (existingUsername) {
+      return NextResponse.json({ error: "Username already in use" }, { status: 409 });
     }
 
     const assignedStoreIds =
@@ -77,6 +92,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name: parsed.data.name,
+        username,
         email,
         passwordHash,
         role: parsed.data.role,
@@ -93,6 +109,7 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         name: user.name,
+        username: user.username,
         email: user.email,
         role: user.role,
         stores: user.stores.map((s) => s.store),
