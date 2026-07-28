@@ -11,6 +11,9 @@ type Sale = {
   total: number;
   paymentMethod: "CASH" | "CARD";
   status: "COMPLETED" | "RETURNED";
+  customerName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
   returnedAt: string | null;
   returnedByName: string | null;
   returnReason: string | null;
@@ -188,6 +191,47 @@ export default function SalesPage() {
         const reportData = await reportRes.json();
         setReport(reportData.requestedReport);
       }
+    }
+  }
+
+  async function sendReceipt(sale: Sale) {
+    let email = sale.customerEmail || "";
+    let phone = sale.customerPhone || "";
+    let name = sale.customerName || "";
+
+    if (!email && !phone) {
+      name = prompt(t("customerName"), name || "") ?? name;
+      phone = prompt(t("customerPhone"), phone || "") ?? phone;
+      email = prompt(t("customerEmail"), email || "") ?? email;
+      if (!email && !phone) {
+        setError(t("noCustomerContact"));
+        return;
+      }
+    }
+
+    setBusyId(`receipt-${sale.id}`);
+    setError("");
+    const res = await fetch(`/api/sales/${sale.id}/receipt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: name,
+        customerPhone: phone,
+        customerEmail: email,
+        email: Boolean(email),
+        sms: Boolean(phone),
+      }),
+    });
+    const data = await res.json();
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || t("receiptSendFailed"));
+      return;
+    }
+    if (data.sale) {
+      setSales((current) =>
+        current.map((item) => (item.id === sale.id ? { ...item, ...data.sale } : item))
+      );
     }
   }
 
@@ -402,23 +446,24 @@ export default function SalesPage() {
                 <tr>
                   <th>{t("date")}</th>
                   <th>{t("cashier")}</th>
+                  <th>{t("customer")}</th>
                   <th>{t("items")}</th>
                   <th>{t("payment")}</th>
                   <th>{t("status")}</th>
                   <th>{t("total")}</th>
-                  {showAdminFeatures && <th></th>}
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {historyLoading ? (
                   <tr>
-                    <td colSpan={showAdminFeatures ? 7 : 6} className="empty">
+                    <td colSpan={8} className="empty">
                       {t("loading")}
                     </td>
                   </tr>
                 ) : visibleSales.length === 0 ? (
                   <tr>
-                    <td colSpan={showAdminFeatures ? 7 : 6} className="empty">
+                    <td colSpan={8} className="empty">
                       No transactions in this view
                     </td>
                   </tr>
@@ -427,6 +472,25 @@ export default function SalesPage() {
                     <tr key={sale.id}>
                       <td data-label={t("date")}>{formatDate(sale.createdAt)}</td>
                       <td data-label={t("cashier")}>{sale.cashier.name}</td>
+                      <td data-label={t("customer")}>
+                        {sale.customerName || sale.customerPhone || sale.customerEmail ? (
+                          <div>
+                            {sale.customerName && <div>{sale.customerName}</div>}
+                            {sale.customerPhone && (
+                              <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
+                                {sale.customerPhone}
+                              </div>
+                            )}
+                            {sale.customerEmail && (
+                              <div style={{ color: "var(--ink-muted)", fontSize: "0.85rem" }}>
+                                {sale.customerEmail}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td data-label={t("items")}>
                         {sale.items.map((i) => `${i.product.name} ×${i.quantity}`).join(", ")}
                       </td>
@@ -450,9 +514,19 @@ export default function SalesPage() {
                       <td data-label={t("total")}>
                         {sale.status === "RETURNED" ? `-${formatMoney(sale.total)}` : formatMoney(sale.total)}
                       </td>
-                      {showAdminFeatures && (
-                        <td data-label="">
+                      <td data-label="">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {sale.status !== "RETURNED" && (
+                            <button
+                              className="btn btn-secondary"
+                              disabled={busyId === `receipt-${sale.id}`}
+                              onClick={() => sendReceipt(sale)}
+                              type="button"
+                            >
+                              {busyId === `receipt-${sale.id}` ? `${t("sendReceipt")}…` : t("sendReceipt")}
+                            </button>
+                          )}
+                          {showAdminFeatures && sale.status !== "RETURNED" && (
                             <button
                               className="btn btn-danger"
                               disabled={busyId === sale.id}
@@ -462,8 +536,8 @@ export default function SalesPage() {
                               {busyId === sale.id ? `${t("returnSale")}…` : t("returnSale")}
                             </button>
                           )}
-                        </td>
-                      )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

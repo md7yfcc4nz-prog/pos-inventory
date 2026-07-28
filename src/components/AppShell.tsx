@@ -7,12 +7,12 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { AdminViewProvider, useAdminView } from "@/components/AdminViewContext";
 
 type Store = { id: string; name: string };
-type User = { id: string; email: string; role: "ADMIN" | "STAFF"; storeId: string | null };
+type User = { id: string; email: string; name?: string; role: "ADMIN" | "STAFF" };
 type Notification = {
   id: string;
   type: string;
   title: string;
-  body: string;
+  message: string;
   createdAt: string;
   readAt: string | null;
 };
@@ -27,6 +27,13 @@ const nav: Array<{ href: string; labelKey: string; adminOnly?: boolean }> = [
   { href: "/admin/users", labelKey: "users", adminOnly: true },
   { href: "/admin/categories", labelKey: "categories", adminOnly: true },
 ];
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
 
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -80,12 +87,13 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
 
   async function onStoreChange(storeId: string) {
     setActiveStoreId(storeId);
-    await fetch("/api/stores/active", {
+    await fetch("/api/stores/switch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ storeId }),
     });
     router.refresh();
+    window.location.reload();
   }
 
   async function signOut() {
@@ -97,9 +105,11 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
     await fetch("/api/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAllRead: true }),
+      body: JSON.stringify({ all: true }),
     });
-    setNotifications((items) => items.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })));
+    setNotifications((items) =>
+      items.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() }))
+    );
   }
 
   async function clearNotifications() {
@@ -120,15 +130,20 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
         setPushMessage(t("pushDenied"));
         return;
       }
+      const keyRes = await fetch("/api/push");
+      const keyData = await keyRes.json();
+      if (!keyRes.ok || !keyData.publicKey) {
+        throw new Error(keyData.error || "Push notifications are not configured");
+      }
       const registration = await navigator.serviceWorker.register("/sw.js");
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
       });
-      const res = await fetch("/api/push/subscribe", {
+      const res = await fetch("/api/push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscription }),
+        body: JSON.stringify(subscription.toJSON()),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -149,7 +164,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
       const registration = await navigator.serviceWorker.getRegistration("/sw.js");
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
-        await fetch("/api/push/subscribe", {
+        await fetch("/api/push", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: subscription.endpoint }),
@@ -247,10 +262,10 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
                   </summary>
                   <div className="notification-dropdown">
                     <div className="notification-actions">
-                      <button className="btn btn-secondary" onClick={markAllRead}>
+                      <button className="btn btn-secondary" type="button" onClick={markAllRead}>
                         {t("markAllRead")}
                       </button>
-                      <button className="btn btn-secondary" onClick={clearNotifications}>
+                      <button className="btn btn-secondary" type="button" onClick={clearNotifications}>
                         {t("clearAll")}
                       </button>
                     </div>
@@ -261,7 +276,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
                         {notifications.map((item) => (
                           <li key={item.id} className={item.readAt ? "" : "unread"}>
                             <strong>{item.title}</strong>
-                            <p>{item.body}</p>
+                            <p>{item.message}</p>
                             <small>{new Date(item.createdAt).toLocaleString()}</small>
                           </li>
                         ))}
@@ -273,10 +288,10 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
             )}
             {showAdminFeatures && (
               <div className="push-actions">
-                <button className="btn btn-secondary" disabled={pushBusy} onClick={enablePushAlerts}>
+                <button className="btn btn-secondary" type="button" disabled={pushBusy} onClick={enablePushAlerts}>
                   {pushBusy ? t("processing") : t("enableAlerts")}
                 </button>
-                <button className="btn btn-secondary" disabled={pushBusy} onClick={disablePushAlerts}>
+                <button className="btn btn-secondary" type="button" disabled={pushBusy} onClick={disablePushAlerts}>
                   {t("disableAlerts")}
                 </button>
               </div>

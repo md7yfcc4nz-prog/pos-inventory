@@ -21,6 +21,24 @@ type CartItem = {
   maxQty: number;
 };
 
+type CompletedSale = {
+  id: string;
+  total: number;
+  paymentMethod: string;
+  createdAt: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
+  store: { name: string };
+  cashier: { name: string };
+  items: Array<{
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    product: { name: string };
+  }>;
+};
+
 export default function PosPage() {
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
@@ -33,6 +51,12 @@ export default function PosPage() {
       .toISOString()
       .slice(0, 10);
   });
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [sendReceiptEmail, setSendReceiptEmail] = useState(false);
+  const [sendReceiptSms, setSendReceiptSms] = useState(false);
+  const [lastSale, setLastSale] = useState<CompletedSale | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -105,17 +129,31 @@ export default function PosPage() {
     setCart((prev) => prev.filter((i) => i.productId !== productId));
   }
 
+  function resetCustomer() {
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerEmail("");
+    setSendReceiptEmail(false);
+    setSendReceiptSms(false);
+  }
+
   async function checkout() {
     if (cart.length === 0) return;
     setBusy(true);
     setError("");
     setMessage("");
+    setLastSale(null);
     const res = await fetch("/api/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         paymentMethod,
         soldAt: saleDate,
+        customerName: customerName.trim() || undefined,
+        customerPhone: customerPhone.trim() || undefined,
+        customerEmail: customerEmail.trim() || undefined,
+        sendReceiptEmail,
+        sendReceiptSms,
         items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       }),
     });
@@ -125,8 +163,20 @@ export default function PosPage() {
       setError(data.error || "Sale failed");
       return;
     }
-    setMessage(`Sale complete — ${formatMoney(data.sale.total)} (${paymentMethod})`);
+
+    const sale = data.sale as CompletedSale;
+    setLastSale(sale);
+    const receiptBits = [];
+    if (data.receipt?.emailed) receiptBits.push(t("receiptEmailed"));
+    if (data.receipt?.smsed) receiptBits.push(t("receiptSmsSent"));
+    setMessage(
+      [
+        `${t("saleComplete")} — ${formatMoney(sale.total)} (${paymentMethod})`,
+        ...receiptBits,
+      ].join(" · ")
+    );
     setCart([]);
+    resetCustomer();
     const refreshed = await fetch("/api/products");
     const json = await refreshed.json();
     if (refreshed.ok) setProducts(json.products);
@@ -140,15 +190,75 @@ export default function PosPage() {
     }
   }
 
+  function printReceipt() {
+    if (!lastSale) return;
+    window.print();
+  }
+
   return (
     <div>
       <h1 className="page-title">{t("pos")}</h1>
       <p className="page-sub">{t("posSubtitle")}</p>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: "1rem" }}>{error}</div>}
-      {message && <div className="alert" style={{ marginBottom: "1rem", background: "var(--brand-soft)", border: "1px solid #b7d8c8", color: "var(--brand)" }}>{message}</div>}
+      {message && (
+        <div
+          className="alert no-print"
+          style={{ marginBottom: "1rem", background: "var(--brand-soft)", border: "1px solid #93c5fd", color: "var(--brand)" }}
+        >
+          {message}
+          {lastSale && (
+            <div style={{ marginTop: "0.65rem" }}>
+              <button className="btn btn-secondary" type="button" onClick={printReceipt}>
+                {t("printReceipt")}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
-      <div className="pos-layout">
+      {lastSale && (
+        <div className="receipt-print card" aria-hidden={!lastSale}>
+          <h1>Kasuwa Manager</h1>
+          <div>{lastSale.store.name}</div>
+          <div>{new Date(lastSale.createdAt).toLocaleString()}</div>
+          <div>
+            {t("cashier")}: {lastSale.cashier.name}
+          </div>
+          {lastSale.customerName && (
+            <div>
+              {t("customer")}: {lastSale.customerName}
+            </div>
+          )}
+          <table>
+            <thead>
+              <tr>
+                <th>{t("item")}</th>
+                <th>{t("quantity")}</th>
+                <th>{t("total")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastSale.items.map((item, index) => (
+                <tr key={`${item.product.name}-${index}`}>
+                  <td>{item.product.name}</td>
+                  <td>{item.quantity}</td>
+                  <td>{formatMoney(item.lineTotal)}</td>
+                </tr>
+              ))}
+              <tr className="total-row">
+                <td colSpan={2}>{t("total")}</td>
+                <td>{formatMoney(lastSale.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div>
+            {t("payment")}: {lastSale.paymentMethod}
+          </div>
+        </div>
+      )}
+
+      <div className="pos-layout no-print">
         <section className="card" style={{ padding: "1rem" }}>
           <div className="field" style={{ marginBottom: "1rem" }}>
             <label className="label">{t("searchBarcode")}</label>
@@ -165,6 +275,7 @@ export default function PosPage() {
           </div>
 
           <div
+            className="pos-product-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
@@ -204,7 +315,7 @@ export default function PosPage() {
           </div>
         </section>
 
-        <section className="card" style={{ padding: "1rem", position: "sticky", top: 90 }}>
+        <section className="card pos-cart" style={{ padding: "1rem", position: "sticky", top: 90 }}>
           <h2 style={{ marginTop: 0, fontFamily: "var(--font-display)" }}>{t("cart")}</h2>
           {cart.length === 0 ? (
             <div className="empty">{t("cartEmpty")}</div>
@@ -231,7 +342,7 @@ export default function PosPage() {
                       <td data-label={t("quantity")}>
                         <input
                           className="input"
-                          style={{ width: 72 }}
+                          style={{ width: "100%", maxWidth: 88 }}
                           type="number"
                           min={1}
                           max={item.maxQty}
@@ -277,6 +388,60 @@ export default function PosPage() {
                 <option value="CARD">{t("card")}</option>
               </select>
             </div>
+
+            <div className="customer-fields">
+              <div style={{ fontWeight: 700 }}>{t("customerDetails")}</div>
+              <div className="field">
+                <label className="label">{t("customerName")}</label>
+                <input
+                  className="input"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder={t("optional")}
+                />
+              </div>
+              <div className="field">
+                <label className="label">{t("customerPhone")}</label>
+                <input
+                  className="input"
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="+227…"
+                />
+              </div>
+              <div className="field">
+                <label className="label">{t("customerEmail")}</label>
+                <input
+                  className="input"
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="name@email.com"
+                />
+              </div>
+              <div className="receipt-options">
+                <label className="receipt-option">
+                  <input
+                    type="checkbox"
+                    checked={sendReceiptEmail}
+                    disabled={!customerEmail.trim()}
+                    onChange={(e) => setSendReceiptEmail(e.target.checked)}
+                  />
+                  {t("emailReceipt")}
+                </label>
+                <label className="receipt-option">
+                  <input
+                    type="checkbox"
+                    checked={sendReceiptSms}
+                    disabled={!customerPhone.trim()}
+                    onChange={(e) => setSendReceiptSms(e.target.checked)}
+                  />
+                  {t("smsReceipt")}
+                </label>
+              </div>
+            </div>
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ color: "var(--ink-muted)" }}>{t("subtotal")}</span>
               <strong style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem" }}>

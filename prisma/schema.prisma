@@ -90,6 +90,9 @@ model Sale {
   subtotal       Float
   total          Float
   status         String     @default("COMPLETED")
+  customerName   String?
+  customerPhone  String?
+  customerEmail  String?
   returnedAt     DateTime?
   returnedByName String?
   returnReason   String?

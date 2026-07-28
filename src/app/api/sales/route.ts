@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { PaymentMethod } from "@/lib/constants";
-import { sendAdminNotification } from "@/lib/notifications";
+import { sendAdminNotification, sendCustomerReceipt } from "@/lib/notifications";
 import { sendAdminPush } from "@/lib/push";
 import { formatMoney } from "@/lib/utils";
 import {
@@ -21,6 +21,11 @@ const saleSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  customerName: z.string().trim().max(120).optional(),
+  customerPhone: z.string().trim().max(40).optional(),
+  customerEmail: z.string().trim().max(120).optional(),
+  sendReceiptEmail: z.boolean().optional(),
+  sendReceiptSms: z.boolean().optional(),
   items: z
     .array(
       z.object({
@@ -233,6 +238,25 @@ export async function POST(request: NextRequest) {
     }
     await assertStoreAccess(user, storeId);
 
+    const customerName = parsed.data.customerName?.trim() || null;
+    const customerPhone = parsed.data.customerPhone?.trim() || null;
+    const customerEmail = parsed.data.customerEmail?.trim() || null;
+    if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      return NextResponse.json({ error: "Invalid customer email" }, { status: 400 });
+    }
+    if (parsed.data.sendReceiptEmail && !customerEmail) {
+      return NextResponse.json(
+        { error: "Enter a customer email to send an email receipt" },
+        { status: 400 }
+      );
+    }
+    if (parsed.data.sendReceiptSms && !customerPhone) {
+      return NextResponse.json(
+        { error: "Enter a customer phone number to send an SMS receipt" },
+        { status: 400 }
+      );
+    }
+
     let soldAt: Date | undefined;
     if (parsed.data.soldAt) {
       soldAt = new Date(`${parsed.data.soldAt}T12:00:00.000Z`);
@@ -302,6 +326,9 @@ export async function POST(request: NextRequest) {
           paymentMethod: parsed.data.paymentMethod,
           subtotal,
           total: subtotal,
+          customerName,
+          customerPhone,
+          customerEmail,
           ...(soldAt ? { createdAt: soldAt } : {}),
           items: {
             create: lineItems,
@@ -315,6 +342,11 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    const receiptResult = await sendCustomerReceipt(sale, {
+      email: Boolean(parsed.data.sendReceiptEmail),
+      sms: Boolean(parsed.data.sendReceiptSms),
+    });
+
     const itemSummary = sale.items
       .map((item) => `${item.product.name} ×${item.quantity}`)
       .join(", ");
@@ -324,10 +356,13 @@ export async function POST(request: NextRequest) {
         `Store: ${sale.store.name}`,
         `Cashier: ${sale.cashier.name}`,
         `Payment: ${sale.paymentMethod}`,
+        sale.customerName ? `Customer: ${sale.customerName}` : null,
         `Items: ${itemSummary}`,
         `Total: ${formatMoney(sale.total)}`,
         `Date: ${sale.createdAt.toISOString()}`,
-      ].join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
     await Promise.allSettled([
       prisma.notification.create({
         data: {
@@ -376,7 +411,7 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
-    return NextResponse.json({ sale }, { status: 201 });
+    return NextResponse.json({ sale, receipt: receiptResult }, { status: 201 });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
