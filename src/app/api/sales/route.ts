@@ -347,6 +347,17 @@ export async function POST(request: NextRequest) {
       sms: Boolean(parsed.data.sendReceiptSms),
     });
 
+    if (!receiptResult.emailed && !receiptResult.smsed) {
+      const reason =
+        receiptResult.emailError ||
+        receiptResult.smsError ||
+        "Could not send the receipt. Check customer contact details and email/SMS settings.";
+      return NextResponse.json(
+        { error: reason, receipt: receiptResult, sale },
+        { status: 502 }
+      );
+    }
+
     const itemSummary = sale.items
       .map((item) => `${item.product.name} ×${item.quantity}`)
       .join(", ");

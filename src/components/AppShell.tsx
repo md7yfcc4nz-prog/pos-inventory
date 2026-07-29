@@ -23,6 +23,7 @@ const nav: Array<{ href: string; labelKey: string; adminOnly?: boolean }> = [
   { href: "/pos", labelKey: "pos" },
   { href: "/sales", labelKey: "sales" },
   { href: "/expenses", labelKey: "expenses" },
+  { href: "/customers", labelKey: "customers" },
   { href: "/admin/stores", labelKey: "stores", adminOnly: true },
   { href: "/admin/users", labelKey: "users", adminOnly: true },
   { href: "/admin/categories", labelKey: "categories", adminOnly: true },

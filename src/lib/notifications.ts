@@ -18,6 +18,8 @@ type SmsPayload = {
   body: string;
 };
 
+type SendResult = { ok: boolean; error?: string };
+
 export type ReceiptSale = {
   id: string;
   total: number;
@@ -40,11 +42,16 @@ function formatMoney(amount: number) {
   return `${Math.round(amount).toLocaleString("fr-FR")} FCFA`;
 }
 
-async function sendEmail({ to, subject, text }: EmailPayload): Promise<boolean> {
+function newTextToHtml(text: string) {
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped.replace(/\n/g, "<br />");
+}
+
+async function sendEmail({ to, subject, text }: EmailPayload): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("Email notification skipped: RESEND_API_KEY is not configured");
-    return false;
+    return { ok: false, error: "RESEND_API_KEY is not configured" };
   }
 
   const from = process.env.EMAIL_FROM || "Kasuwa Manager <onboarding@resend.dev>";
@@ -61,28 +68,31 @@ async function sendEmail({ to, subject, text }: EmailPayload): Promise<boolean> 
         to: [to],
         subject,
         text,
+        html: newTextToHtml(text),
       }),
     });
 
     if (!response.ok) {
-      console.error("Email notification failed:", response.status, await response.text());
-      return false;
+      const details = await response.text().catch(() => "");
+      const error = details ? `Resend: ${response.status} ${details}` : `Resend: ${response.status}`;
+      console.error("Email notification failed:", error);
+      return { ok: false, error };
     }
-    return true;
+    return { ok: true };
   } catch (error) {
     console.error("Email notification failed:", error);
-    return false;
+    return { ok: false, error: error instanceof Error ? error.message : "Email send failed" };
   }
 }
 
-async function sendSms({ to, body }: SmsPayload): Promise<boolean> {
+async function sendSms({ to, body }: SmsPayload): Promise<SendResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
 
   if (!accountSid || !authToken || !from) {
     console.warn("SMS notification skipped: Twilio credentials are not configured");
-    return false;
+    return { ok: false, error: "Twilio credentials are not configured" };
   }
 
   try {
@@ -106,17 +116,19 @@ async function sendSms({ to, body }: SmsPayload): Promise<boolean> {
     );
 
     if (!response.ok) {
-      console.error("SMS notification failed:", response.status, await response.text());
-      return false;
+      const details = await response.text().catch(() => "");
+      const error = details ? `Twilio: ${response.status} ${details}` : `Twilio: ${response.status}`;
+      console.error("SMS notification failed:", error);
+      return { ok: false, error };
     }
-    return true;
+    return { ok: true };
   } catch (error) {
     console.error("SMS notification failed:", error);
-    return false;
+    return { ok: false, error: error instanceof Error ? error.message : "SMS send failed" };
   }
 }
 
-async function sendAdminEmail({ subject, text }: Notification): Promise<boolean> {
+async function sendAdminEmail({ subject, text }: Notification): Promise<SendResult> {
   const to = process.env.ADMIN_NOTIFICATION_EMAIL || DEFAULT_ADMIN_EMAIL;
   return sendEmail({ to, subject, text });
 }
@@ -131,7 +143,7 @@ function buildSmsBody({ subject, text }: Notification) {
   return body.length > 480 ? `${body.slice(0, 477)}...` : body;
 }
 
-async function sendAdminSms({ subject, text }: Notification): Promise<boolean> {
+async function sendAdminSms({ subject, text }: Notification): Promise<SendResult> {
   const to = process.env.ADMIN_SMS_TO || DEFAULT_ADMIN_SMS;
   return sendSms({ to, body: buildSmsBody({ subject, text }) });
 }
@@ -144,7 +156,7 @@ export async function sendAdminNotification({
     sendAdminEmail({ subject, text }),
     sendAdminSms({ subject, text }),
   ]);
-  return results.some(Boolean);
+  return results.some((r) => r.ok);
 }
 
 export function buildReceiptText(sale: ReceiptSale) {
@@ -176,16 +188,21 @@ export function buildReceiptText(sale: ReceiptSale) {
 export async function sendCustomerReceipt(
   sale: ReceiptSale,
   options: { email?: boolean; sms?: boolean } = {}
-): Promise<{ emailed: boolean; smsed: boolean }> {
+): Promise<{
+  emailed: boolean;
+  smsed: boolean;
+  emailError?: string;
+  smsError?: string;
+}> {
   const text = buildReceiptText(sale);
   const subject = `Your receipt from ${sale.store.name} — ${formatMoney(sale.total)}`;
   const wantEmail = options.email !== false && Boolean(sale.customerEmail);
   const wantSms = options.sms !== false && Boolean(sale.customerPhone);
 
-  const [emailed, smsed] = await Promise.all([
+  const [emailResult, smsResult] = await Promise.all([
     wantEmail && sale.customerEmail
       ? sendEmail({ to: sale.customerEmail, subject, text })
-      : Promise.resolve(false),
+      : Promise.resolve({ ok: false } as SendResult),
     wantSms && sale.customerPhone
       ? sendSms({
           to: sale.customerPhone,
@@ -193,8 +210,13 @@ export async function sendCustomerReceipt(
             .map((item) => `${item.product.name}×${item.quantity}`)
             .join(", ")}`,
         })
-      : Promise.resolve(false),
+      : Promise.resolve({ ok: false } as SendResult),
   ]);
 
-  return { emailed, smsed };
+  return {
+    emailed: emailResult.ok,
+    smsed: smsResult.ok,
+    emailError: wantEmail ? emailResult.error : undefined,
+    smsError: wantSms ? smsResult.error : undefined,
+  };
 }

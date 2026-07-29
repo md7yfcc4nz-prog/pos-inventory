@@ -166,9 +166,20 @@ export default function PosPage() {
 
     const sale = data.sale as CompletedSale;
     setLastSale(sale);
-    const receiptBits = [];
-    if (data.receipt?.emailed) receiptBits.push(t("receiptEmailed"));
-    if (data.receipt?.smsed) receiptBits.push(t("receiptSmsSent"));
+    const receipt = data.receipt as
+      | {
+          emailed?: boolean;
+          smsed?: boolean;
+          emailError?: string;
+          smsError?: string;
+        }
+      | undefined;
+
+    const receiptBits: string[] = [];
+    if (receipt?.emailed) receiptBits.push(t("receiptEmailed"));
+    else if (sendReceiptEmail) receiptBits.push(t("receiptEmailFailed"));
+    if (receipt?.smsed) receiptBits.push(t("receiptSmsSent"));
+    else if (sendReceiptSms) receiptBits.push(t("receiptSmsFailed"));
     setMessage(
       [
         `${t("saleComplete")} — ${formatMoney(sale.total)} (${paymentMethod})`,

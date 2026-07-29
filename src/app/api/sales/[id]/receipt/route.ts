@@ -86,10 +86,13 @@ export async function POST(
     });
 
     if (!receipt.emailed && !receipt.smsed) {
+      const reason =
+        receipt.emailError ||
+        receipt.smsError ||
+        "Could not send the receipt. Check customer contact details and email/SMS settings.";
       return NextResponse.json(
         {
-          error:
-            "Could not send the receipt. Check customer contact details and email/SMS settings.",
+          error: reason,
           receipt,
         },
         { status: 502 }
