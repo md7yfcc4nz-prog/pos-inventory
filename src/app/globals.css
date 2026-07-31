@@ -864,6 +864,28 @@ table.data th {
   align-items: start;
 }
 
+.qty-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 168px;
+}
+
+.qty-btn {
+  width: 40px;
+  min-width: 40px;
+  padding: 0.45rem 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.qty-input {
+  width: 64px;
+  text-align: center;
+  padding-inline: 0.35rem;
+}
+
 .customer-fields {
   display: grid;
   gap: 0.7rem;
@@ -1176,6 +1198,20 @@ table.data th {
 
   .pos-cart {
     position: static !important;
+  }
+
+  .qty-control {
+    max-width: none;
+  }
+
+  .qty-btn {
+    min-height: 42px;
+  }
+
+  .qty-input {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 56px;
   }
 
   .customer-fields {

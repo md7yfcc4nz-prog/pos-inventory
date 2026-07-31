@@ -39,7 +39,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const product = await prisma.product.findFirst({
       where: { id, archivedAt: null },
-      include: { stock: { where: { storeId } } },
+      include: {
+        stock: { where: { storeId } },
+        createdBy: { select: { id: true, name: true } },
+      },
     });
 
     if (!product) {
@@ -50,6 +53,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
       product: {
         ...product,
         quantity: product.stock[0]?.quantity ?? 0,
+        addedBy: product.createdBy?.name || null,
+        addedAt: product.createdAt,
       },
     });
   } catch (error) {

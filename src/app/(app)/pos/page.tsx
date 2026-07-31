@@ -114,14 +114,25 @@ export default function PosPage() {
   }
 
   function setQty(productId: string, quantity: number) {
+    if (!Number.isFinite(quantity)) return;
     setCart((prev) =>
-      prev
-        .map((item) =>
-          item.productId === productId
-            ? { ...item, quantity: Math.max(1, Math.min(item.maxQty, quantity)) }
-            : item
-        )
-        .filter((item) => item.quantity > 0)
+      prev.map((item) =>
+        item.productId === productId
+          ? { ...item, quantity: Math.max(1, Math.min(item.maxQty, Math.round(quantity))) }
+          : item
+      )
+    );
+  }
+
+  function bumpQty(productId: string, delta: number) {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.productId !== productId) return item;
+        return {
+          ...item,
+          quantity: Math.max(1, Math.min(item.maxQty, item.quantity + delta)),
+        };
+      })
     );
   }
 
@@ -176,10 +187,16 @@ export default function PosPage() {
       | undefined;
 
     const receiptBits: string[] = [];
-    if (receipt?.emailed) receiptBits.push(t("receiptEmailed"));
-    else if (sendReceiptEmail) receiptBits.push(t("receiptEmailFailed"));
-    if (receipt?.smsed) receiptBits.push(t("receiptSmsSent"));
-    else if (sendReceiptSms) receiptBits.push(t("receiptSmsFailed"));
+    if (sendReceiptEmail || sendReceiptSms) {
+      if (receipt?.emailed) receiptBits.push(t("receiptEmailed"));
+      else if (sendReceiptEmail) {
+        receiptBits.push(receipt?.emailError || t("receiptEmailFailed"));
+      }
+      if (receipt?.smsed) receiptBits.push(t("receiptSmsSent"));
+      else if (sendReceiptSms) {
+        receiptBits.push(receipt?.smsError || t("receiptSmsFailed"));
+      }
+    }
     setMessage(
       [
         `${t("saleComplete")} — ${formatMoney(sale.total)} (${paymentMethod})`,
@@ -351,15 +368,37 @@ export default function PosPage() {
                         </div>
                       </td>
                       <td data-label={t("quantity")}>
-                        <input
-                          className="input"
-                          style={{ width: "100%", maxWidth: 88 }}
-                          type="number"
-                          min={1}
-                          max={item.maxQty}
-                          value={item.quantity}
-                          onChange={(e) => setQty(item.productId, Number(e.target.value))}
-                        />
+                        <div className="qty-control">
+                          <button
+                            className="btn btn-secondary qty-btn"
+                            type="button"
+                            aria-label="Decrease quantity"
+                            onClick={() => bumpQty(item.productId, -1)}
+                            disabled={item.quantity <= 1}
+                          >
+                            −
+                          </button>
+                          <input
+                            className="input qty-input"
+                            type="number"
+                            min={1}
+                            max={item.maxQty}
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const next = Number(e.target.value);
+                              if (Number.isFinite(next)) setQty(item.productId, next);
+                            }}
+                          />
+                          <button
+                            className="btn btn-secondary qty-btn"
+                            type="button"
+                            aria-label="Increase quantity"
+                            onClick={() => bumpQty(item.productId, 1)}
+                            disabled={item.quantity >= item.maxQty}
+                          >
+                            +
+                          </button>
+                        </div>
                       </td>
                       <td data-label={t("total")}>{formatMoney(item.unitPrice * item.quantity)}</td>
                       <td data-label="">

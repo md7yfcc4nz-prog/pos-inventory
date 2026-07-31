@@ -19,6 +19,7 @@ model User {
   stores       UserStore[]
   sales        Sale[]
   expenses     Expense[]
+  productsAdded Product[]
   pushSubscriptions PushSubscription[]
 }
 
@@ -66,8 +67,10 @@ model Product {
   expiryDate        DateTime?
   imagePath         String?
   archivedAt        DateTime?
+  createdById       String?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
+  createdBy         User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
   stock             StoreStock[]
   saleItems         SaleItem[]
 }

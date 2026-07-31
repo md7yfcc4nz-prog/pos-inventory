@@ -22,6 +22,8 @@ type Product = {
   imagePath: string | null;
   lowStock: boolean;
   expired: boolean;
+  addedBy: string | null;
+  addedAt: string;
 };
 
 const FILTERS = [
@@ -178,6 +180,8 @@ function InventoryInner() {
               <th>{t("quantity")}</th>
               <th>{t("price")}</th>
               <th>{t("expiry")}</th>
+              <th>{t("addedBy")}</th>
+              <th>{t("dateAdded")}</th>
               <th>{t("status")}</th>
               <th></th>
             </tr>
@@ -185,13 +189,13 @@ function InventoryInner() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="empty">
+                <td colSpan={11} className="empty">
                   {t("loading")}
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
-                <td colSpan={9} className="empty">
+                <td colSpan={11} className="empty">
                   {t("noProducts")}
                 </td>
               </tr>
@@ -215,6 +219,8 @@ function InventoryInner() {
                   <td data-label={t("quantity")}>{p.quantity}</td>
                   <td data-label={t("price")}>{formatMoney(p.price)}</td>
                   <td data-label={t("expiry")}>{formatDate(p.expiryDate)}</td>
+                  <td data-label={t("addedBy")}>{p.addedBy || "—"}</td>
+                  <td data-label={t("dateAdded")}>{formatDate(p.addedAt)}</td>
                   <td data-label={t("status")}>
                     {p.expired ? (
                       <span className="badge badge-danger">{t("expired")}</span>

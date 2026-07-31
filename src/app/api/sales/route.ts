@@ -342,21 +342,15 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    const receiptResult = await sendCustomerReceipt(sale, {
-      email: Boolean(parsed.data.sendReceiptEmail),
-      sms: Boolean(parsed.data.sendReceiptSms),
-    });
-
-    if (!receiptResult.emailed && !receiptResult.smsed) {
-      const reason =
-        receiptResult.emailError ||
-        receiptResult.smsError ||
-        "Could not send the receipt. Check customer contact details and email/SMS settings.";
-      return NextResponse.json(
-        { error: reason, receipt: receiptResult, sale },
-        { status: 502 }
-      );
-    }
+    const wantReceiptEmail = Boolean(parsed.data.sendReceiptEmail);
+    const wantReceiptSms = Boolean(parsed.data.sendReceiptSms);
+    const receiptResult =
+      wantReceiptEmail || wantReceiptSms
+        ? await sendCustomerReceipt(sale, {
+            email: wantReceiptEmail,
+            sms: wantReceiptSms,
+          })
+        : { emailed: false, smsed: false };
 
     const itemSummary = sale.items
       .map((item) => `${item.product.name} ×${item.quantity}`)

@@ -21,6 +21,7 @@ type FormState = {
   lowStockThreshold: string;
   expiryDate: string;
   imagePath: string;
+  addedAt: string;
 };
 
 const empty: FormState = {
@@ -34,6 +35,9 @@ const empty: FormState = {
   lowStockThreshold: "10",
   expiryDate: "",
   imagePath: "",
+  addedAt: new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10),
 };
 
 export default function ProductFormPage() {
@@ -47,6 +51,7 @@ export default function ProductFormPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [uploading, setUploading] = useState(false);
+  const [addedBy, setAddedBy] = useState<string | null>(null);
 
   const selectedCategory = categories.find((c) => c.key === form.category);
   const requiresExpiry = Boolean(selectedCategory?.requiresExpiry || form.category === "MEDICINE");
@@ -86,7 +91,9 @@ export default function ProductFormPage() {
           lowStockThreshold: String(p.lowStockThreshold),
           expiryDate: p.expiryDate ? p.expiryDate.slice(0, 10) : "",
           imagePath: p.imagePath || "",
+          addedAt: p.addedAt ? p.addedAt.slice(0, 10) : p.createdAt.slice(0, 10),
         });
+        setAddedBy(p.addedBy || null);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -126,6 +133,7 @@ export default function ProductFormPage() {
       lowStockThreshold: Number(form.lowStockThreshold),
       expiryDate: form.expiryDate || null,
       imagePath: form.imagePath || null,
+      ...(isNew ? { addedAt: form.addedAt || undefined } : {}),
     };
 
     const res = await fetch(isNew ? "/api/products" : `/api/products/${params.id}`, {
@@ -219,6 +227,34 @@ export default function ProductFormPage() {
             />
           </div>
         </div>
+
+        {isNew ? (
+          <div className="field" style={{ marginBottom: "1rem" }}>
+            <label className="label">{t("dateAdded")}</label>
+            <input
+              className="input"
+              type="date"
+              value={form.addedAt}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => update("addedAt", e.target.value)}
+              required
+            />
+            <div style={{ color: "var(--ink-muted)", fontSize: "0.8rem", marginTop: 4 }}>
+              {t("dateAddedHint")}
+            </div>
+          </div>
+        ) : (
+          <div className="split-2" style={{ marginBottom: "1rem" }}>
+            <div className="field">
+              <label className="label">{t("addedBy")}</label>
+              <input className="input" value={addedBy || "—"} readOnly />
+            </div>
+            <div className="field">
+              <label className="label">{t("dateAdded")}</label>
+              <input className="input" value={form.addedAt} readOnly />
+            </div>
+          </div>
+        )}
 
         <div className="field" style={{ marginBottom: "1.2rem" }}>
           <label className="label">{t("productImage")}</label>

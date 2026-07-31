@@ -26,6 +26,10 @@ const productSchema = z.object({
   quantity: z.coerce.number().int().min(0).default(0),
   storeId: z.string().optional(),
   imagePath: z.string().optional().nullable(),
+  addedAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -70,6 +74,7 @@ export async function GET(request: NextRequest) {
         stock: {
           where: { storeId },
         },
+        createdBy: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -82,6 +87,8 @@ export async function GET(request: NextRequest) {
         stockId: p.stock[0]?.id ?? null,
         lowStock: isLowStock(quantity, p.lowStockThreshold),
         expired: isExpired(p.expiryDate),
+        addedBy: p.createdBy?.name || null,
+        addedAt: p.createdAt,
       };
     });
 
@@ -140,6 +147,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let createdAt: Date | undefined;
+    if (data.addedAt) {
+      createdAt = new Date(`${data.addedAt}T12:00:00.000Z`);
+      if (
+        Number.isNaN(createdAt.getTime()) ||
+        createdAt.toISOString().slice(0, 10) !== data.addedAt
+      ) {
+        return NextResponse.json({ error: "Invalid added date" }, { status: 400 });
+      }
+      const tomorrow = new Date();
+      tomorrow.setUTCHours(23, 59, 59, 999);
+      if (createdAt > tomorrow) {
+        return NextResponse.json({ error: "Added date cannot be in the future" }, { status: 400 });
+      }
+    }
+
     const product = await prisma.product.create({
       data: {
         name: data.name,
@@ -151,6 +174,8 @@ export async function POST(request: NextRequest) {
         lowStockThreshold: data.lowStockThreshold,
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
         imagePath: data.imagePath || null,
+        createdById: user.id,
+        ...(createdAt ? { createdAt } : {}),
         stock: {
           create: {
             storeId,
@@ -160,6 +185,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         stock: { where: { storeId } },
+        createdBy: { select: { id: true, name: true } },
       },
     });
 
