@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { SalesPieChart } from "@/components/SalesCharts";
 import { formatDate, formatMoney } from "@/lib/utils";
 
 type DashboardData = {
@@ -170,6 +171,15 @@ export default function DashboardPage() {
         <section className="card" style={{ marginBottom: "1.2rem" }}>
           <div style={{ padding: "1rem 1.1rem", borderBottom: "1px solid var(--line)" }}>
             <h2 style={{ margin: 0, fontFamily: "var(--font-display)" }}>{t("topSellingProducts")}</h2>
+          </div>
+          <div style={{ padding: "1rem 1.1rem" }}>
+            <SalesPieChart
+              emptyLabel={t("noSalesYet")}
+              slices={data.topProducts.map((item) => ({
+                label: item.name,
+                value: item.salesTotal,
+              }))}
+            />
           </div>
           <div className="table-wrap">
             <table className="data">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useAdminView } from "@/components/AdminViewContext";
-import { SalesBarChart, SalesPieChart } from "@/components/SalesCharts";
+import { SalesPieChart } from "@/components/SalesCharts";
 import { formatDate, formatMoney } from "@/lib/utils";
 
 type Sale = {
@@ -375,10 +375,9 @@ export default function SalesPage() {
                     <h3 className="section-title" style={{ marginTop: 0 }}>
                       {t("topSellingProducts")}
                     </h3>
-                    <SalesBarChart
+                    <SalesPieChart
                       emptyLabel={t("noSalesInRange")}
-                      formatValue={formatMoney}
-                      bars={report.topProducts.map((row) => ({
+                      slices={report.topProducts.map((row) => ({
                         label: row.name,
                         value: row.salesTotal,
                       }))}
