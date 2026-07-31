@@ -351,6 +351,10 @@ textarea {
   width: 70px;
 }
 
+.language-switch {
+  min-width: 0;
+}
+
 .page-content {
   padding: 1.5rem;
   min-width: 0;

@@ -39,7 +39,7 @@ function urlBase64ToUint8Array(base64String: string) {
 function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { showAdminFeatures, viewMode, setViewMode, isAdminUser } = useAdminView();
   const [user, setUser] = useState<User | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
@@ -245,6 +245,18 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="topbar-actions">
+            <label className="store-switch language-switch">
+              <span>{t("language")}</span>
+              <select
+                className="select language-select"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as "en" | "fr")}
+                aria-label={t("language")}
+              >
+                <option value="en">EN</option>
+                <option value="fr">FR</option>
+              </select>
+            </label>
             {isAdminUser && (
               <button
                 type="button"
