@@ -57,7 +57,7 @@ export default function ProductFormPage() {
   const requiresExpiry = Boolean(selectedCategory?.requiresExpiry || form.category === "MEDICINE");
 
   useEffect(() => {
-    fetch("/api/categories")
+    fetch(`/api/categories?_=${Date.now()}`, { cache: "no-store" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to load categories");

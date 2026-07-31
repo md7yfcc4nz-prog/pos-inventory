@@ -146,9 +146,8 @@ export async function GET(request: NextRequest) {
               product: { select: { id: true, name: true, category: true } },
             },
           }),
-          prisma.productCategory.findMany({
-            where: { archivedAt: null },
-          }),
+          // Include archived names so historical sales still label deleted categories.
+          prisma.productCategory.findMany(),
         ]);
       const salesTotal = gross._sum?.total ?? 0;
       const returnsTotal = returns._sum?.total ?? 0;

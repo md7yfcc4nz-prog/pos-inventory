@@ -11,7 +11,7 @@ import { cn, formatDate, formatMoney } from "@/lib/utils";
 type Product = {
   id: string;
   name: string;
-  category: "DRINKS" | "MEDICINE" | "OTHER";
+  category: string;
   barcode: string | null;
   supplier: string | null;
   cost: number;
@@ -26,13 +26,15 @@ type Product = {
   addedAt: string;
 };
 
-const FILTERS = [
-  { key: "", labelKey: "all" },
-  { key: "drinks", labelKey: "drinks" },
-  { key: "medicine", labelKey: "medicine" },
+type CategoryOption = {
+  key: string;
+  name: string;
+};
+
+const STATUS_FILTERS = [
   { key: "low_stock", labelKey: "lowStock" },
   { key: "expired", labelKey: "expired" },
-];
+] as const;
 
 function InventoryInner() {
   const { t } = useLanguage();
@@ -40,11 +42,18 @@ function InventoryInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [supplier, setSupplier] = useState(searchParams.get("supplier") || "");
   const [filter, setFilter] = useState(searchParams.get("filter") || "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const categoryNameByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    categories.forEach((c) => map.set(c.key, c.name));
+    return map;
+  }, [categories]);
 
   const suppliers = useMemo(() => {
     const set = new Set<string>();
@@ -53,6 +62,17 @@ function InventoryInner() {
     });
     return Array.from(set).sort();
   }, [products]);
+
+  const filterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string }> = [{ key: "", label: t("all") }];
+    categories.forEach((c) => {
+      chips.push({ key: c.key, label: c.name });
+    });
+    STATUS_FILTERS.forEach((f) => {
+      chips.push({ key: f.key, label: t(f.labelKey) });
+    });
+    return chips;
+  }, [categories, t]);
 
   async function load(next?: { q?: string; filter?: string; supplier?: string }) {
     setLoading(true);
@@ -63,7 +83,7 @@ function InventoryInner() {
     if (query) params.set("q", query);
     if (f) params.set("filter", f);
     if (s) params.set("supplier", s);
-    const res = await fetch(`/api/products?${params.toString()}`);
+    const res = await fetch(`/api/products?${params.toString()}`, { cache: "no-store" });
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
@@ -76,8 +96,38 @@ function InventoryInner() {
 
   useEffect(() => {
     load();
+    fetch(`/api/categories?_=${Date.now()}`, { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load categories");
+        setCategories(data.categories);
+      })
+      .catch(() => {
+        // Keep inventory usable even if category chips fail to load.
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Drop stale category filters (e.g. DRINKS) once categories load without that key.
+  useEffect(() => {
+    if (!filter || filter === "low_stock" || filter === "expired") return;
+    if (categories.length === 0) return;
+    const legacy =
+      filter === "drinks"
+        ? "DRINKS"
+        : filter === "medicine"
+          ? "MEDICINE"
+          : filter;
+    if (!categories.some((c) => c.key === legacy)) {
+      setFilter("");
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (supplier) params.set("supplier", supplier);
+      router.replace(`/inventory?${params.toString()}`);
+      load({ filter: "" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
 
   function applyFilter(nextFilter: string) {
     setFilter(nextFilter);
@@ -89,9 +139,16 @@ function InventoryInner() {
     load({ filter: nextFilter });
   }
 
+  function categoryLabel(key: string) {
+    return (
+      categoryNameByKey.get(key) ||
+      (key === "DRINKS" ? t("drinks") : key === "MEDICINE" ? t("medicine") : key === "OTHER" ? t("other") : key)
+    );
+  }
+
   async function removeProduct(id: string) {
     if (!confirm("Delete this product?")) return;
-    const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/products/${id}`, { method: "DELETE", cache: "no-store" });
     const data = await res.json();
     if (!res.ok) {
       setError(data.error || "Failed to delete product");
@@ -114,14 +171,14 @@ function InventoryInner() {
       </div>
 
       <div className="filters">
-        {FILTERS.map((f) => (
+        {filterChips.map((f) => (
           <button
             key={f.key || "all"}
             className={cn("chip", filter === f.key && "active")}
             onClick={() => applyFilter(f.key)}
             type="button"
           >
-            {t(f.labelKey)}
+            {f.label}
           </button>
         ))}
       </div>
@@ -213,7 +270,7 @@ function InventoryInner() {
                       <Link href={`/inventory/${p.id}`}>{p.name}</Link>
                     </div>
                   </td>
-                  <td data-label={t("category")}>{t(p.category === "DRINKS" ? "drinks" : p.category === "MEDICINE" ? "medicine" : "other")}</td>
+                  <td data-label={t("category")}>{categoryLabel(p.category)}</td>
                   <td data-label={t("barcode")}>{p.barcode || "—"}</td>
                   <td data-label={t("supplier")}>{p.supplier || "—"}</td>
                   <td data-label={t("quantity")}>{p.quantity}</td>

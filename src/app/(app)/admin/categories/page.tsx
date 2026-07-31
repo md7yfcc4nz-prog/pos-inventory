@@ -10,6 +10,15 @@ type Category = {
   requiresExpiry: boolean;
 };
 
+async function fetchCategories(): Promise<Category[]> {
+  const res = await fetch(`/api/categories?_=${Date.now()}`, { cache: "no-store" });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to load categories");
+  }
+  return data.categories as Category[];
+}
+
 export default function AdminCategoriesPage() {
   const { t } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -20,27 +29,17 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    const res = await fetch("/api/categories");
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || t("categoryLoadFailed"));
-      return;
-    }
-    setCategories(data.categories);
+    const next = await fetchCategories();
+    setCategories(next);
   }
 
   useEffect(() => {
     let cancelled = false;
     async function loadCategories() {
       try {
-        const res = await fetch("/api/categories");
-        const data = await res.json();
+        const next = await fetchCategories();
         if (cancelled) return;
-        if (!res.ok) {
-          setError(data.error || t("categoryLoadFailed"));
-          return;
-        }
-        setCategories(data.categories);
+        setCategories(next);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : t("categoryLoadFailed"));
@@ -63,6 +62,7 @@ export default function AdminCategoriesPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, requiresExpiry }),
+      cache: "no-store",
     });
     const data = await res.json();
     if (!res.ok) {
@@ -72,7 +72,15 @@ export default function AdminCategoriesPage() {
     setName("");
     setRequiresExpiry(false);
     setMessage(t("categorySaved"));
-    await load();
+    if (data.category) {
+      setCategories((prev) =>
+        [...prev.filter((c) => c.id !== data.category.id), data.category].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      );
+    } else {
+      await load();
+    }
   }
 
   async function editCategory(category: Category) {
@@ -87,6 +95,7 @@ export default function AdminCategoriesPage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: nextName.trim(), requiresExpiry: nextRequires }),
+      cache: "no-store",
     });
     const data = await res.json();
     if (!res.ok) {
@@ -94,21 +103,39 @@ export default function AdminCategoriesPage() {
       return;
     }
     setMessage(t("categoryUpdated"));
-    await load();
+    if (data.category) {
+      setCategories((prev) =>
+        prev
+          .map((c) => (c.id === data.category.id ? data.category : c))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      );
+    } else {
+      await load();
+    }
   }
 
   async function removeCategory(category: Category) {
     if (!confirm(`${t("delete")} ${category.name}?`)) return;
     setError("");
     setMessage("");
-    const res = await fetch(`/api/categories/${category.id}`, { method: "DELETE" });
+    // Optimistic removal so the list updates immediately.
+    setCategories((prev) => prev.filter((c) => c.id !== category.id));
+    const res = await fetch(`/api/categories/${category.id}`, {
+      method: "DELETE",
+      cache: "no-store",
+    });
     const data = await res.json();
     if (!res.ok) {
       setError(data.error || t("categoryDeleteFailed"));
+      await load();
       return;
     }
     setMessage(t("categoryDeleted"));
-    await load();
+    try {
+      await load();
+    } catch {
+      // Keep optimistic state if refresh fails.
+    }
   }
 
   return (
@@ -207,6 +234,8 @@ export default function AdminCategoriesPage() {
                           className="btn btn-danger"
                           type="button"
                           onClick={() => removeCategory(category)}
+                          disabled={category.key === "OTHER"}
+                          title={category.key === "OTHER" ? "Other cannot be deleted" : undefined}
                         >
                           {t("delete")}
                         </button>

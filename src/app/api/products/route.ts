@@ -96,12 +96,15 @@ export async function GET(request: NextRequest) {
       mapped = mapped.filter((p) => p.lowStock);
     }
 
-    if (filter === "drinks") {
-      mapped = mapped.filter((p) => p.category === Category.DRINKS);
-    }
-
-    if (filter === "medicine") {
-      mapped = mapped.filter((p) => p.category === Category.MEDICINE);
+    // Legacy filter keys + any active category key (e.g. DRINKS, MEDICINE, custom).
+    if (filter && filter !== "low_stock" && filter !== "expired") {
+      const categoryKey =
+        filter === "drinks"
+          ? Category.DRINKS
+          : filter === "medicine"
+            ? Category.MEDICINE
+            : filter;
+      mapped = mapped.filter((p) => p.category === categoryKey);
     }
 
     return NextResponse.json({ products: mapped, storeId });

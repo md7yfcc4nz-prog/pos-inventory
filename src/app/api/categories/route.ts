@@ -4,6 +4,10 @@ import { prisma } from "@/lib/db";
 import { AuthError, requireAdmin, requireUser } from "@/lib/auth";
 import { slugifyCategoryKey } from "@/lib/categories";
 
+const noStoreHeaders = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+};
+
 export async function GET() {
   try {
     await requireUser();
@@ -11,7 +15,7 @@ export async function GET() {
       where: { archivedAt: null },
       orderBy: { name: "asc" },
     });
-    return NextResponse.json({ categories });
+    return NextResponse.json({ categories }, { headers: noStoreHeaders });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -36,8 +40,19 @@ export async function POST(request: NextRequest) {
 
     const name = parsed.data.name.trim();
     let key = slugifyCategoryKey(name);
+
+    const existingActiveName = await prisma.productCategory.findFirst({
+      where: { name, archivedAt: null },
+    });
+    if (existingActiveName) {
+      return NextResponse.json({ error: "A category with that name already exists" }, { status: 409 });
+    }
+
     const existingKey = await prisma.productCategory.findUnique({ where: { key } });
     if (existingKey) {
+      if (!existingKey.archivedAt) {
+        return NextResponse.json({ error: "A category with that key already exists" }, { status: 409 });
+      }
       key = `${key}_${Date.now().toString(36).toUpperCase()}`;
     }
 
@@ -49,7 +64,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ category }, { status: 201 });
+    return NextResponse.json({ category }, { status: 201, headers: noStoreHeaders });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
