@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useAdminView } from "@/components/AdminViewContext";
 import { SalesPieChart } from "@/components/SalesCharts";
@@ -52,9 +52,26 @@ type Report = {
 
 type SalesView = "report" | "history";
 
+type EditForm = {
+  paymentMethod: "CASH" | "CARD";
+  soldAt: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  items: Array<{ id: string; quantity: number; name: string }>;
+};
+
 function todayLocal() {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function saleDateLocal(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return todayLocal();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
     .toISOString()
     .slice(0, 10);
 }
@@ -73,6 +90,9 @@ export default function SalesPage() {
   const [reportFrom, setReportFrom] = useState(todayLocal());
   const [reportTo, setReportTo] = useState(todayLocal());
   const [report, setReport] = useState<Report | null>(null);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     if (!reportFrom || !reportTo || reportFrom > reportTo) {
@@ -162,6 +182,97 @@ export default function SalesPage() {
     setHistoryLoaded(true);
   }
 
+  async function refreshReportIfNeeded() {
+    if (!reportFrom || !reportTo) return;
+    const params = new URLSearchParams({ from: reportFrom, to: reportTo });
+    const reportRes = await fetch(`/api/sales?${params.toString()}`);
+    if (reportRes.ok) {
+      const reportData = await reportRes.json();
+      setReport(reportData.requestedReport);
+    }
+  }
+
+  function openEditSale(sale: Sale) {
+    setError("");
+    setEditingSale(sale);
+    setEditForm({
+      paymentMethod: sale.paymentMethod,
+      soldAt: saleDateLocal(sale.createdAt),
+      customerName: sale.customerName || "",
+      customerPhone: sale.customerPhone || "",
+      customerEmail: sale.customerEmail || "",
+      items: sale.items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        name: item.product.name,
+      })),
+    });
+  }
+
+  function closeEditSale() {
+    if (editSaving) return;
+    setEditingSale(null);
+    setEditForm(null);
+  }
+
+  async function saveEditSale(event: FormEvent) {
+    event.preventDefault();
+    if (!editingSale || !editForm) return;
+    setEditSaving(true);
+    setError("");
+    const res = await fetch(`/api/sales/${editingSale.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentMethod: editForm.paymentMethod,
+        soldAt: editForm.soldAt,
+        customerName: editForm.customerName,
+        customerPhone: editForm.customerPhone,
+        customerEmail: editForm.customerEmail,
+        items: editForm.items.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })),
+      }),
+    });
+    const data = await res.json();
+    setEditSaving(false);
+    if (!res.ok) {
+      setError(data.error || t("saleUpdateFailed"));
+      return;
+    }
+    setSales((current) =>
+      current.map((item) => (item.id === editingSale.id ? data.sale : item))
+    );
+    setEditingSale(null);
+    setEditForm(null);
+    await refreshHistory();
+    await refreshReportIfNeeded();
+  }
+
+  async function deleteSale(sale: Sale) {
+    const message =
+      sale.status === "RETURNED" ? t("confirmDeleteReturnedSale") : t("confirmDeleteSale");
+    if (!confirm(message)) {
+      return;
+    }
+    setBusyId(`delete-${sale.id}`);
+    setError("");
+    const res = await fetch(`/api/sales/${sale.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    setBusyId("");
+    if (!res.ok) {
+      setError(data.error || t("saleDeleteFailed"));
+      return;
+    }
+    setSales((current) => current.filter((item) => item.id !== sale.id));
+    if (editingSale?.id === sale.id) {
+      setEditingSale(null);
+      setEditForm(null);
+    }
+    await refreshReportIfNeeded();
+  }
+
   async function returnSale(sale: Sale) {
     if (!confirm("Return this entire sale? Its items will be added back to inventory.")) {
       return;
@@ -184,14 +295,7 @@ export default function SalesPage() {
       current.map((item) => (item.id === sale.id ? data.sale : item))
     );
     await refreshHistory();
-    if (reportFrom && reportTo) {
-      const params = new URLSearchParams({ from: reportFrom, to: reportTo });
-      const reportRes = await fetch(`/api/sales?${params.toString()}`);
-      if (reportRes.ok) {
-        const reportData = await reportRes.json();
-        setReport(reportData.requestedReport);
-      }
-    }
+    await refreshReportIfNeeded();
   }
 
   async function sendReceipt(sale: Sale) {
@@ -525,7 +629,17 @@ export default function SalesPage() {
                               {busyId === `receipt-${sale.id}` ? `${t("sendReceipt")}…` : t("sendReceipt")}
                             </button>
                           )}
-                          {showAdminFeatures && sale.status !== "RETURNED" && (
+                          {showAdminFeatures && sale.status === "COMPLETED" && (
+                            <button
+                              className="btn btn-secondary"
+                              disabled={Boolean(busyId)}
+                              onClick={() => openEditSale(sale)}
+                              type="button"
+                            >
+                              {t("editSale")}
+                            </button>
+                          )}
+                          {showAdminFeatures && sale.status === "COMPLETED" && (
                             <button
                               className="btn btn-danger"
                               disabled={busyId === sale.id}
@@ -533,6 +647,18 @@ export default function SalesPage() {
                               type="button"
                             >
                               {busyId === sale.id ? `${t("returnSale")}…` : t("returnSale")}
+                            </button>
+                          )}
+                          {showAdminFeatures && (
+                            <button
+                              className="btn btn-danger"
+                              disabled={busyId === `delete-${sale.id}`}
+                              onClick={() => deleteSale(sale)}
+                              type="button"
+                            >
+                              {busyId === `delete-${sale.id}`
+                                ? `${t("deleteSale")}…`
+                                : t("deleteSale")}
                             </button>
                           )}
                         </div>
@@ -544,6 +670,203 @@ export default function SalesPage() {
             </table>
           </div>
         </>
+      )}
+
+      {editingSale && editForm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-sale-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 80,
+            display: "grid",
+            placeItems: "center",
+            padding: "1rem",
+            background: "rgba(18, 24, 20, 0.45)",
+          }}
+          onClick={closeEditSale}
+        >
+          <form
+            className="card"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={saveEditSale}
+            style={{
+              width: "min(520px, 100%)",
+              maxHeight: "90vh",
+              overflow: "auto",
+              padding: "1.2rem",
+            }}
+          >
+            <h2 id="edit-sale-title" className="section-title" style={{ marginTop: 0 }}>
+              {t("editingSale")}
+            </h2>
+            <p className="page-sub" style={{ marginTop: 0 }}>
+              {formatMoney(editingSale.total)} · {formatDate(editingSale.createdAt)}
+            </p>
+
+            <div className="field" style={{ marginBottom: "0.85rem" }}>
+              <label className="label" htmlFor="edit-sale-date">
+                {t("saleDate")}
+              </label>
+              <input
+                className="input"
+                id="edit-sale-date"
+                type="date"
+                required
+                max={todayLocal()}
+                value={editForm.soldAt}
+                onChange={(event) =>
+                  setEditForm((current) =>
+                    current ? { ...current, soldAt: event.target.value } : current
+                  )
+                }
+              />
+            </div>
+
+            <div className="field" style={{ marginBottom: "0.85rem" }}>
+              <label className="label" htmlFor="edit-sale-payment">
+                {t("payment")}
+              </label>
+              <select
+                className="input"
+                id="edit-sale-payment"
+                value={editForm.paymentMethod}
+                onChange={(event) =>
+                  setEditForm((current) =>
+                    current
+                      ? {
+                          ...current,
+                          paymentMethod: event.target.value as "CASH" | "CARD",
+                        }
+                      : current
+                  )
+                }
+              >
+                <option value="CASH">{t("cash")}</option>
+                <option value="CARD">{t("card")}</option>
+              </select>
+            </div>
+
+            <div className="customer-fields" style={{ marginBottom: "0.85rem" }}>
+              <div className="field">
+                <label className="label" htmlFor="edit-customer-name">
+                  {t("customerName")}
+                </label>
+                <input
+                  className="input"
+                  id="edit-customer-name"
+                  value={editForm.customerName}
+                  onChange={(event) =>
+                    setEditForm((current) =>
+                      current ? { ...current, customerName: event.target.value } : current
+                    )
+                  }
+                />
+              </div>
+              <div className="field">
+                <label className="label" htmlFor="edit-customer-phone">
+                  {t("customerPhone")}
+                </label>
+                <input
+                  className="input"
+                  id="edit-customer-phone"
+                  value={editForm.customerPhone}
+                  onChange={(event) =>
+                    setEditForm((current) =>
+                      current ? { ...current, customerPhone: event.target.value } : current
+                    )
+                  }
+                />
+              </div>
+              <div className="field">
+                <label className="label" htmlFor="edit-customer-email">
+                  {t("customerEmail")}
+                </label>
+                <input
+                  className="input"
+                  id="edit-customer-email"
+                  type="email"
+                  value={editForm.customerEmail}
+                  onChange={(event) =>
+                    setEditForm((current) =>
+                      current ? { ...current, customerEmail: event.target.value } : current
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <div className="label" style={{ marginBottom: "0.5rem" }}>
+                {t("lineQuantities")}
+              </div>
+              <div style={{ display: "grid", gap: "0.65rem" }}>
+                {editForm.items.map((item, index) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 110px",
+                      gap: "0.65rem",
+                      alignItems: "end",
+                    }}
+                  >
+                    <div className="field" style={{ margin: 0 }}>
+                      <label className="label" htmlFor={`edit-item-name-${item.id}`}>
+                        {t("product")}
+                      </label>
+                      <input
+                        className="input"
+                        id={`edit-item-name-${item.id}`}
+                        value={item.name}
+                        readOnly
+                      />
+                    </div>
+                    <div className="field" style={{ margin: 0 }}>
+                      <label className="label" htmlFor={`edit-item-qty-${item.id}`}>
+                        {t("quantity")}
+                      </label>
+                      <input
+                        className="input"
+                        id={`edit-item-qty-${item.id}`}
+                        type="number"
+                        min={1}
+                        step={1}
+                        required
+                        value={item.quantity}
+                        onChange={(event) => {
+                          const quantity = Math.max(1, Number(event.target.value) || 1);
+                          setEditForm((current) => {
+                            if (!current) return current;
+                            const items = [...current.items];
+                            items[index] = { ...items[index], quantity };
+                            return { ...current, items };
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn btn-primary" disabled={editSaving} type="submit">
+                {editSaving ? `${t("saveSale")}…` : t("saveSale")}
+              </button>
+              <button
+                className="btn btn-secondary"
+                disabled={editSaving}
+                onClick={closeEditSale}
+                type="button"
+              >
+                {t("cancel")}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );
