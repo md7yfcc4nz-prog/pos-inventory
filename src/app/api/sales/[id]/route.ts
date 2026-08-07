@@ -37,7 +37,27 @@ const editSchema = z.object({
     .optional(),
 });
 
-function parseSoldAt(soldAt: string): Date {
+function localDateKey(value: Date) {
+  return new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function parseSoldAt(soldAt: string, previous?: Date): Date {
+  const now = new Date();
+  const localToday = localDateKey(now);
+
+  // Keep the original clock time when the calendar day did not change.
+  if (previous && localDateKey(previous) === soldAt) {
+    return previous;
+  }
+
+  // Moving a sale onto "today" → stamp with the current time.
+  if (soldAt === localToday) {
+    return now;
+  }
+
+  // Late / backdated day → noon UTC (date-only semantics).
   const date = new Date(`${soldAt}T12:00:00.000Z`);
   if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== soldAt) {
     throw new AuthError("Invalid sale date", 400);
@@ -95,7 +115,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         data.paymentMethod = parsed.data.paymentMethod;
       }
       if (parsed.data.soldAt) {
-        data.createdAt = parseSoldAt(parsed.data.soldAt);
+        data.createdAt = parseSoldAt(parsed.data.soldAt, existing.createdAt);
       }
       if (parsed.data.customerName !== undefined) {
         data.customerName = parsed.data.customerName?.trim() || null;

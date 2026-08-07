@@ -420,7 +420,12 @@ export default function PosPage() {
                 className="input"
                 type="date"
                 value={saleDate}
-                max={new Date().toISOString().slice(0, 10)}
+                max={(() => {
+                  const now = new Date();
+                  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+                    .toISOString()
+                    .slice(0, 10);
+                })()}
                 onChange={(e) => setSaleDate(e.target.value)}
               />
               <div style={{ color: "var(--ink-muted)", fontSize: "0.8rem", marginTop: 4 }}>

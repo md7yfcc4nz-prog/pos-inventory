@@ -17,6 +17,23 @@ export function formatDate(value: Date | string | null | undefined) {
   return format(new Date(value), "MMM d, yyyy");
 }
 
+/** Locale-aware date + time for sale timestamps (and similar). */
+export function formatDateTime(
+  value: Date | string | null | undefined,
+  locale?: string | null
+) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(locale || undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function categoryLabel(category: CategoryType | string) {
   switch (category) {
     case Category.DRINKS:

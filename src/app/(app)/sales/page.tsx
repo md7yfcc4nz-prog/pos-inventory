@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useAdminView } from "@/components/AdminViewContext";
 import { SalesPieChart } from "@/components/SalesCharts";
-import { formatDate, formatMoney } from "@/lib/utils";
+import { formatDateTime, formatMoney } from "@/lib/utils";
 
 type Sale = {
   id: string;
@@ -77,7 +77,8 @@ function saleDateLocal(iso: string) {
 }
 
 export default function SalesPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const dateLocale = language === "fr" ? "fr-FR" : "en-US";
   const { showAdminFeatures } = useAdminView();
   const [view, setView] = useState<SalesView>("report");
   const [sales, setSales] = useState<Sale[]>([]);
@@ -92,6 +93,7 @@ export default function SalesPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [qtyDrafts, setQtyDrafts] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
@@ -207,17 +209,40 @@ export default function SalesPage() {
         name: item.product.name,
       })),
     });
+    setQtyDrafts(
+      Object.fromEntries(sale.items.map((item) => [item.id, String(item.quantity)]))
+    );
   }
 
   function closeEditSale() {
     if (editSaving) return;
     setEditingSale(null);
     setEditForm(null);
+    setQtyDrafts({});
+  }
+
+  function setEditItemQuantity(itemId: string, next: number) {
+    const quantity = Math.max(1, Math.floor(next));
+    setQtyDrafts((drafts) => ({ ...drafts, [itemId]: String(quantity) }));
+    setEditForm((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        items: current.items.map((row) =>
+          row.id === itemId ? { ...row, quantity } : row
+        ),
+      };
+    });
   }
 
   async function saveEditSale(event: FormEvent) {
     event.preventDefault();
     if (!editingSale || !editForm) return;
+    const committedItems = editForm.items.map((item) => {
+      const raw = qtyDrafts[item.id];
+      const quantity = Math.max(1, Math.floor(Number(raw ?? item.quantity) || 1));
+      return { id: item.id, quantity };
+    });
     setEditSaving(true);
     setError("");
     const res = await fetch(`/api/sales/${editingSale.id}`, {
@@ -229,10 +254,7 @@ export default function SalesPage() {
         customerName: editForm.customerName,
         customerPhone: editForm.customerPhone,
         customerEmail: editForm.customerEmail,
-        items: editForm.items.map((item) => ({
-          id: item.id,
-          quantity: item.quantity,
-        })),
+        items: committedItems,
       }),
     });
     const data = await res.json();
@@ -246,6 +268,7 @@ export default function SalesPage() {
     );
     setEditingSale(null);
     setEditForm(null);
+    setQtyDrafts({});
     await refreshHistory();
     await refreshReportIfNeeded();
   }
@@ -269,6 +292,7 @@ export default function SalesPage() {
     if (editingSale?.id === sale.id) {
       setEditingSale(null);
       setEditForm(null);
+      setQtyDrafts({});
     }
     await refreshReportIfNeeded();
   }
@@ -573,7 +597,7 @@ export default function SalesPage() {
                 ) : (
                   visibleSales.map((sale) => (
                     <tr key={sale.id}>
-                      <td data-label={t("date")}>{formatDate(sale.createdAt)}</td>
+                      <td data-label={t("date")}>{formatDateTime(sale.createdAt, dateLocale)}</td>
                       <td data-label={t("cashier")}>{sale.cashier.name}</td>
                       <td data-label={t("customer")}>
                         {sale.customerName || sale.customerPhone || sale.customerEmail ? (
@@ -703,7 +727,7 @@ export default function SalesPage() {
               {t("editingSale")}
             </h2>
             <p className="page-sub" style={{ marginTop: 0 }}>
-              {formatMoney(editingSale.total)} · {formatDate(editingSale.createdAt)}
+              {formatMoney(editingSale.total)} · {formatDateTime(editingSale.createdAt, dateLocale)}
             </p>
 
             <div className="field" style={{ marginBottom: "0.85rem" }}>
@@ -803,12 +827,12 @@ export default function SalesPage() {
                 {t("lineQuantities")}
               </div>
               <div style={{ display: "grid", gap: "0.65rem" }}>
-                {editForm.items.map((item, index) => (
+                {editForm.items.map((item) => (
                   <div
                     key={item.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 110px",
+                      gridTemplateColumns: "1fr auto",
                       gap: "0.65rem",
                       alignItems: "end",
                     }}
@@ -828,24 +852,57 @@ export default function SalesPage() {
                       <label className="label" htmlFor={`edit-item-qty-${item.id}`}>
                         {t("quantity")}
                       </label>
-                      <input
-                        className="input"
-                        id={`edit-item-qty-${item.id}`}
-                        type="number"
-                        min={1}
-                        step={1}
-                        required
-                        value={item.quantity}
-                        onChange={(event) => {
-                          const quantity = Math.max(1, Number(event.target.value) || 1);
-                          setEditForm((current) => {
-                            if (!current) return current;
-                            const items = [...current.items];
-                            items[index] = { ...items[index], quantity };
-                            return { ...current, items };
-                          });
-                        }}
-                      />
+                      <div className="qty-control">
+                        <button
+                          className="btn btn-secondary qty-btn"
+                          type="button"
+                          aria-label="Decrease quantity"
+                          disabled={item.quantity <= 1}
+                          onClick={() => setEditItemQuantity(item.id, item.quantity - 1)}
+                        >
+                          −
+                        </button>
+                        <input
+                          className="input qty-input"
+                          id={`edit-item-qty-${item.id}`}
+                          type="number"
+                          min={1}
+                          step={1}
+                          required
+                          value={qtyDrafts[item.id] ?? String(item.quantity)}
+                          onChange={(event) => {
+                            const raw = event.target.value;
+                            setQtyDrafts((drafts) => ({ ...drafts, [item.id]: raw }));
+                            if (raw === "") return;
+                            const next = Number(raw);
+                            if (!Number.isFinite(next)) return;
+                            setEditForm((current) => {
+                              if (!current) return current;
+                              return {
+                                ...current,
+                                items: current.items.map((row) =>
+                                  row.id === item.id
+                                    ? { ...row, quantity: Math.max(1, Math.floor(next)) }
+                                    : row
+                                ),
+                              };
+                            });
+                          }}
+                          onBlur={() => {
+                            const raw = qtyDrafts[item.id];
+                            const next = Math.max(1, Math.floor(Number(raw) || 1));
+                            setEditItemQuantity(item.id, next);
+                          }}
+                        />
+                        <button
+                          className="btn btn-secondary qty-btn"
+                          type="button"
+                          aria-label="Increase quantity"
+                          onClick={() => setEditItemQuantity(item.id, item.quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

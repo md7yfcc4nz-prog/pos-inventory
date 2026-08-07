@@ -258,17 +258,25 @@ export async function POST(request: NextRequest) {
 
     let soldAt: Date | undefined;
     if (parsed.data.soldAt) {
-      soldAt = new Date(`${parsed.data.soldAt}T12:00:00.000Z`);
-      if (
-        Number.isNaN(soldAt.getTime()) ||
-        soldAt.toISOString().slice(0, 10) !== parsed.data.soldAt
-      ) {
-        return NextResponse.json({ error: "Invalid sale date" }, { status: 400 });
-      }
-      const tomorrow = new Date();
-      tomorrow.setUTCHours(23, 59, 59, 999);
-      if (soldAt > tomorrow) {
-        return NextResponse.json({ error: "Sale date cannot be in the future" }, { status: 400 });
+      const now = new Date();
+      const localToday = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+        .toISOString()
+        .slice(0, 10);
+      // Late / backdated sales: store noon UTC for that calendar day.
+      // Same-day (normal) sales: use the real clock time via Prisma default.
+      if (parsed.data.soldAt !== localToday) {
+        soldAt = new Date(`${parsed.data.soldAt}T12:00:00.000Z`);
+        if (
+          Number.isNaN(soldAt.getTime()) ||
+          soldAt.toISOString().slice(0, 10) !== parsed.data.soldAt
+        ) {
+          return NextResponse.json({ error: "Invalid sale date" }, { status: 400 });
+        }
+        const tomorrow = new Date();
+        tomorrow.setUTCHours(23, 59, 59, 999);
+        if (soldAt > tomorrow) {
+          return NextResponse.json({ error: "Sale date cannot be in the future" }, { status: 400 });
+        }
       }
     }
 
