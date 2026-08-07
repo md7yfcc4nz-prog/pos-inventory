@@ -47,7 +47,13 @@ export async function GET(request: NextRequest) {
     const filter = searchParams.get("filter");
     const supplier = searchParams.get("supplier")?.trim() || "";
 
-    const where: Prisma.ProductWhereInput = { archivedAt: null };
+    // Products are a shared catalog, but inventory is per-store via StoreStock.
+    // Only list products that have a stock row for this store so new stores start empty
+    // and never appear to inherit another store's inventory.
+    const where: Prisma.ProductWhereInput = {
+      archivedAt: null,
+      stock: { some: { storeId } },
+    };
 
     if (q) {
       where.OR = [

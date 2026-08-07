@@ -94,6 +94,41 @@ export default function AdminStoresPage() {
     window.location.reload();
   }
 
+  async function copyInventory(target: Store) {
+    const others = stores.filter((s) => s.id !== target.id);
+    if (others.length === 0) {
+      setError("No other store available as source");
+      return;
+    }
+    const entered = prompt(
+      `${t("selectSourceStore")}\n\n${others.map((s) => s.name).join("\n")}`
+    );
+    if (entered === null || !entered.trim()) return;
+    const source = others.find(
+      (s) => s.name.trim().toLowerCase() === entered.trim().toLowerCase()
+    );
+    if (!source) {
+      setError(t("copyInventoryFailed"));
+      return;
+    }
+    if (!confirm(t("copyInventoryConfirm"))) return;
+
+    setError("");
+    setMessage("");
+    const res = await fetch(`/api/stores/${target.id}/copy-inventory`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceStoreId: source.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || t("copyInventoryFailed"));
+      return;
+    }
+    const countMsg = t("inventoryCopied").replace("{n}", String(data.copied ?? 0));
+    setMessage(`${t("copyInventorySuccess")}: ${countMsg}`);
+  }
+
   return (
     <div>
       <h1 className="page-title">{t("stores")}</h1>
@@ -142,6 +177,13 @@ export default function AdminStoresPage() {
                         type="button"
                       >
                         {t("edit")}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => copyInventory(store)}
+                        type="button"
+                      >
+                        {t("copyInventory")}
                       </button>
                       <button
                         className="btn btn-danger"

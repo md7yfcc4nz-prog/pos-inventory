@@ -240,6 +240,14 @@ const translations: Record<Language, Record<string, string>> = {
     retailValueNote: "Sell price × quantity",
     unitsOnHandLabel: "Units on hand",
     productsCount: "products",
+    copyInventory: "Copy inventory",
+    selectSourceStore: "Copy inventory FROM which store? Enter the store name exactly.",
+    copyInventoryConfirm:
+      "Copy all stock quantities from the selected store into this store? Existing quantities for matching products will be overwritten.",
+    copyInventorySuccess: "Inventory copied",
+    copyInventoryFailed: "Failed to copy inventory",
+    inventoryCopied: "Copied {n} stock rows",
+    clearInventory: "Clear inventory",
   },
   fr: {
     dashboard: "Tableau de bord",
@@ -476,6 +484,15 @@ const translations: Record<Language, Record<string, string>> = {
     retailValueNote: "Prix de vente × quantité",
     unitsOnHandLabel: "Unités en stock",
     productsCount: "produits",
+    copyInventory: "Copier l’inventaire",
+    selectSourceStore:
+      "Copier l’inventaire DEPUIS quel magasin ? Saisissez le nom exact du magasin.",
+    copyInventoryConfirm:
+      "Copier toutes les quantités du magasin sélectionné vers ce magasin ? Les quantités existantes pour les produits correspondants seront écrasées.",
+    copyInventorySuccess: "Inventaire copié",
+    copyInventoryFailed: "Échec de la copie de l’inventaire",
+    inventoryCopied: "{n} lignes de stock copiées",
+    clearInventory: "Vider l’inventaire",
   },
 };
 

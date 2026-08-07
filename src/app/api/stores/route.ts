@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid store data" }, { status: 400 });
     }
 
+    // New stores start with empty inventory — no StoreStock rows are created or copied.
     const store = await prisma.store.create({
       data: {
         name: parsed.data.name,

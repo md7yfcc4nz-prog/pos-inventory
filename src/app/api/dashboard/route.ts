@@ -74,7 +74,10 @@ export async function GET() {
     }
 
     const recent = await prisma.product.findMany({
-      where: { archivedAt: null },
+      where: {
+        archivedAt: null,
+        stock: { some: { storeId } },
+      },
       take: 6,
       orderBy: { createdAt: "desc" },
       include: {
